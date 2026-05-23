@@ -2,10 +2,44 @@ from flask import Flask, jsonify, request
 from datetime import datetime
 import socket
 import os
+import pika
+import json
 
 app = Flask(__name__)
 
 orders = []
+
+#################################################
+# RabbitMQ Configuration
+#################################################
+
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+
+#################################################
+# RabbitMQ Publisher
+#################################################
+
+def publish_order(order):
+
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST)
+    )
+
+    channel = connection.channel()
+
+    channel.queue_declare(queue="orders")
+
+    channel.basic_publish(
+        exchange="",
+        routing_key="orders",
+        body=json.dumps(order)
+    )
+
+    connection.close()
+
+#################################################
+# Routes
+#################################################
 
 @app.route("/")
 def home():
@@ -43,11 +77,16 @@ def create_order():
 
     orders.append(order)
 
+    #################################################
+    # Publish to RabbitMQ
+    #################################################
+
+    publish_order(order)
+
     return jsonify({
         "message": "Order created",
         "order": order
     }), 201
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

@@ -30,6 +30,8 @@ spec:
           env:
             - name: APP_VERSION
               value: "v1"
+            - name: RABBITMQ_HOST
+              value: "rabbitmq"
 
           resources:
             requests:
