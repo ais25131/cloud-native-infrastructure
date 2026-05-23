@@ -17,29 +17,21 @@ pipeline {
             }
         }
 
-        stage('Import image to MicroK8s') {
+        stage('Deploy order-api with Ansible') {
             steps {
-                sh '''
-                microk8s ctr image import kubernetes/apps/order-api/order-api.tar
-                '''
+                dir('ansible') {
+                    sh 'ansible-playbook -i inventory.ini deploy-order-api.yml'
+                }
             }
         }
 
-        stage('Restart order-api deployment') {
+        stage('Check Kubernetes status') {
             steps {
-                sh '''
-                microk8s kubectl rollout restart deployment order-api
-                microk8s kubectl rollout status deployment order-api
-                '''
-            }
-        }
-
-        stage('Check pods') {
-            steps {
-                sh '''
-                microk8s kubectl get pods
-                microk8s kubectl get svc
-                '''
+                dir('ansible') {
+                    sh '''
+                    ansible kubernetes -i inventory.ini -m shell -a "microk8s kubectl get pods -A"
+                    '''
+                }
             }
         }
     }

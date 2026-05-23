@@ -2,12 +2,20 @@
 - name: Update apt cache
   apt:
     update_cache: yes
+  become: true
+
+#################################################
+# Install Required Packages
+#################################################
 
 - name: Install required packages
   apt:
     name:
       - openjdk-21-jdk
       - fontconfig
+      - ansible
+      - git
+      - curl
     state: present
     update_cache: yes
   become: true
@@ -25,7 +33,7 @@
 
 - name: Download Jenkins GPG key as dearmored keyring
   shell: |
-   curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | gpg --dearmor -o /etc/apt/keyrings/jenkins-keyring.gpg
+    curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | gpg --dearmor -o /etc/apt/keyrings/jenkins-keyring.gpg
   args:
     creates: /etc/apt/keyrings/jenkins-keyring.gpg
   become: true
@@ -41,7 +49,7 @@
 # Install Jenkins
 #################################################
 
-- name: Update apt cache
+- name: Update apt cache after Jenkins repo
   apt:
     update_cache: yes
   become: true
@@ -52,7 +60,7 @@
     state: present
   become: true
 
-- name: Enable Jenkins service
+- name: Enable and start Jenkins
   systemd:
     name: jenkins
     enabled: yes
@@ -69,6 +77,10 @@
     creates: /usr/bin/docker
   become: true
 
+#################################################
+# Docker Permissions
+#################################################
+
 - name: Add vagrant user to docker group
   user:
     name: vagrant
@@ -83,8 +95,14 @@
     append: yes
   become: true
 
+- name: Restart Jenkins after docker group change
+  systemd:
+    name: jenkins
+    state: restarted
+  become: true
+
 #################################################
-# Verify installations
+# Verify Installations
 #################################################
 
 - name: Check Jenkins status
@@ -98,7 +116,7 @@
     var: jenkins_status.status.ActiveState
 
 #################################################
-# Jenkins Nginx Reverse Proxy
+# Nginx Reverse Proxy
 #################################################
 
 - name: Install nginx
@@ -152,4 +170,3 @@
     enabled: yes
     state: restarted
   become: true
-  

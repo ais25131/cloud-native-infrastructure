@@ -1,0 +1,36 @@
+---
+- name: Deploy order-api image to Kubernetes
+  hosts: kubernetes
+  become: true
+
+  tasks:
+
+    #################################################
+    # Copy Docker image tar
+    #################################################
+
+    - name: Copy order-api image tar
+      copy:
+        src: ../kubernetes/apps/order-api/order-api.tar
+        dest: /tmp/order-api.tar
+
+    #################################################
+    # Import image into MicroK8s
+    #################################################
+
+    - name: Import image into MicroK8s
+      command: microk8s ctr image import /tmp/order-api.tar
+
+    #################################################
+    # Restart deployment
+    #################################################
+
+    - name: Restart order-api deployment
+      command: microk8s kubectl rollout restart deployment order-api -n order-api
+
+    #################################################
+    # Wait for rollout
+    #################################################
+
+    - name: Wait for rollout
+      command: microk8s kubectl rollout status deployment order-api -n order-api
