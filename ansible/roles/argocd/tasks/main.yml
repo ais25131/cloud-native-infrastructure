@@ -1,0 +1,48 @@
+---
+- name: Create ArgoCD namespace
+  command: microk8s kubectl create namespace argocd
+  become: true
+  register: argocd_namespace
+  failed_when: false
+  changed_when: "'created' in argocd_namespace.stdout"
+
+- name: Install ArgoCD
+  command: >
+    microk8s kubectl apply -n argocd
+    --server-side
+    --force-conflicts
+    -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  become: true
+  changed_when: false
+
+- name: Wait for ArgoCD pods
+  command: >
+    microk8s kubectl wait
+    --for=condition=Ready
+    pods
+    --all
+    -n argocd
+    --timeout=600s
+  become: true
+  changed_when: false
+
+- name: Ensure ArgoCD server service is ClusterIP
+  command: >
+    microk8s kubectl patch svc argocd-server
+    -n argocd
+    -p '{"spec": {"type": "ClusterIP"}}'
+  become: true
+  changed_when: false
+
+- name: Copy ArgoCD ingress manifest
+  copy:
+    src: argocd-ingress.yaml
+    dest: /tmp/argocd-ingress.yaml
+    mode: '0644'
+  become: true
+
+- name: Apply ArgoCD ingress
+  command: microk8s kubectl apply -f /tmp/argocd-ingress.yaml
+  become: true
+  register: argocd_ingress
+  changed_when: "'created' in argocd_ingress.stdout or 'configured' in argocd_ingress.stdout"

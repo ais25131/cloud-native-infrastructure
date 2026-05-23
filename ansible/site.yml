@@ -1,0 +1,26 @@
+---
+- name: Configure all servers
+  hosts: all
+  become: true
+
+  roles:
+    - common
+
+- name: Configure Jenkins server
+  hosts: jenkins
+  become: true
+
+  roles:
+    - jenkins  
+
+- name: Configure Kubernetes node
+  hosts: kubernetes
+  become: true
+  roles:
+    - kubernetes  
+
+- name: Install ArgoCD
+  hosts: kubernetes
+  become: true
+  roles:
+    - argocd    

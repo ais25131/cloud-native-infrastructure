@@ -1,0 +1,98 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install required packages
+  apt:
+    name:
+      - openjdk-21-jdk
+      - fontconfig
+    state: present
+    update_cache: yes
+  become: true
+
+#################################################
+# Jenkins Repository
+#################################################
+
+- name: Create apt keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Download Jenkins GPG key as dearmored keyring
+  shell: |
+   curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | gpg --dearmor -o /etc/apt/keyrings/jenkins-keyring.gpg
+  args:
+    creates: /etc/apt/keyrings/jenkins-keyring.gpg
+  become: true
+
+- name: Add Jenkins repository
+  copy:
+    dest: /etc/apt/sources.list.d/jenkins.list
+    content: |
+      deb [signed-by=/etc/apt/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/
+  become: true
+
+#################################################
+# Install Jenkins
+#################################################
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  become: true
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+  become: true
+
+- name: Enable Jenkins service
+  systemd:
+    name: jenkins
+    enabled: yes
+    state: started
+  become: true
+
+#################################################
+# Docker Installation
+#################################################
+
+- name: Install Docker
+  shell: curl -fsSL https://get.docker.com | sh
+  args:
+    creates: /usr/bin/docker
+  become: true
+
+- name: Add vagrant user to docker group
+  user:
+    name: vagrant
+    groups: docker
+    append: yes
+  become: true
+
+- name: Add jenkins user to docker group
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
+  become: true
+
+#################################################
+# Verify installations
+#################################################
+
+- name: Check Jenkins status
+  systemd:
+    name: jenkins
+  register: jenkins_status
+  become: true
+
+- name: Show Jenkins status
+  debug:
+    var: jenkins_status.status.ActiveState

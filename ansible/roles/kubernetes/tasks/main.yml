@@ -1,0 +1,67 @@
+- name: Install snapd
+  apt:
+    name: snapd
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Check if MicroK8s is already installed
+  command: snap list microk8s
+  register: microk8s_check
+  failed_when: false
+  changed_when: false
+  become: true
+
+
+- name: Install MicroK8s
+  command: snap install microk8s --classic
+  when: microk8s_check.rc != 0
+  become: true
+
+
+
+- name: Add vagrant user to microk8s group
+  user:
+    name: vagrant
+    groups: microk8s
+    append: yes
+  become: true
+
+
+
+- name: Create .kube directory for vagrant user
+  file:
+    path: /home/vagrant/.kube
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  become: true
+
+
+
+- name: Wait for MicroK8s to be ready
+  command: microk8s status --wait-ready
+  become: true
+  changed_when: false
+
+
+- name: Enable MicroK8s addons
+  command: microk8s enable dns storage ingress metrics-server
+  become: true
+  register: microk8s_addons
+  changed_when: "'is already enabled' not in microk8s_addons.stdout"
+
+
+- name: Export kubeconfig for vagrant user
+  shell: microk8s config > /home/vagrant/.kube/config
+  become: true
+
+
+- name: Fix kubeconfig ownership
+  file:
+    path: /home/vagrant/.kube/config
+    owner: vagrant
+    group: vagrant
+    mode: "0600"
+  become: true

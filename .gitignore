@@ -1,0 +1,21 @@
+# OpenTofu
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform.lock.hcl
+
+# Vagrant
+**/.vagrant/
+
+# Logs
+*.log
+
+# Environment
+.env
+
+# Ansible
+*.retry
+
+# OS
+.DS_Store
+Thumbs.db
