@@ -95,7 +95,29 @@
     append: yes
   become: true
 
-- name: Restart Jenkins after docker group change
+#################################################
+# Jenkins SSH Key for Ansible
+#################################################
+
+- name: Create Jenkins .ssh directory
+  file:
+    path: /var/lib/jenkins/.ssh
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+  become: true
+
+- name: Copy ansible SSH private key to Jenkins
+  copy:
+    src: "{{ lookup('env', 'HOME') }}/.ssh/ansible_key"
+    dest: /var/lib/jenkins/.ssh/ansible_key
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+  become: true
+
+- name: Restart Jenkins after permissions and SSH key changes
   systemd:
     name: jenkins
     state: restarted
@@ -169,4 +191,44 @@
     name: nginx
     enabled: yes
     state: restarted
+  become: true
+
+#################################################
+# Jenkins SSH Agent Setup
+#################################################
+
+- name: Create Jenkins .ssh directory
+  file:
+    path: /var/lib/jenkins/.ssh
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+  become: true
+
+- name: Copy ansible SSH private key to Jenkins
+  copy:
+    src: "{{ lookup('env', 'HOME') }}/.ssh/ansible_key"
+    dest: /var/lib/jenkins/.ssh/ansible_key
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+  become: true
+
+- name: Create SSH askpass script for Jenkins
+  copy:
+    dest: /var/lib/jenkins/.ssh/askpass.sh
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+    content: |
+      #!/bin/sh
+      echo "{{ ansible_key_passphrase }}"
+  become: true
+
+- name: Add k8s host to Jenkins known_hosts
+  shell: |
+    ssh-keyscan -H 192.168.56.21 >> /var/lib/jenkins/.ssh/known_hosts
+    chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts
+    chmod 644 /var/lib/jenkins/.ssh/known_hosts
   become: true

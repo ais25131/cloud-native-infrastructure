@@ -20,7 +20,18 @@ pipeline {
         stage('Deploy order-api with Ansible') {
             steps {
                 dir('ansible') {
-                    sh 'ansible-playbook -i inventory.ini deploy-order-api.yml'
+                    sh '''
+                    eval "$(ssh-agent -s)"
+
+                    export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
+                    export DISPLAY=:0
+
+                    setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
+
+                    ansible-playbook -i inventory.ini deploy-order-api.yml
+
+                    ssh-agent -k
+                    '''
                 }
             }
         }
@@ -29,7 +40,16 @@ pipeline {
             steps {
                 dir('ansible') {
                     sh '''
+                    eval "$(ssh-agent -s)"
+
+                    export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
+                    export DISPLAY=:0
+
+                    setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
+
                     ansible kubernetes -i inventory.ini -m shell -a "microk8s kubectl get pods -A"
+
+                    ssh-agent -k
                     '''
                 }
             }
