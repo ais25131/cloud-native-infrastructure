@@ -17,4 +17,4 @@ data:
 
         static_configs:
           - targets:
-              - order-api.order-api.svc.cluster.local:5000
+              - order-api-service.order-api.svc.cluster.local:80
