@@ -1,0 +1,11 @@
+- name: Enable MicroK8s metrics-server addon
+  command: microk8s enable metrics-server
+  become: true
+  register: metrics_server_enable
+  changed_when: "'Enabling' in metrics_server_enable.stdout or 'enabled' in metrics_server_enable.stdout"
+  failed_when: false
+
+- name: Wait for metrics-server pods to be ready
+  command: microk8s kubectl wait --for=condition=Ready pod -l k8s-app=metrics-server -n kube-system --timeout=180s
+  become: true
+  changed_when: false
