@@ -12,17 +12,15 @@ spec:
       app: prometheus
 
   template:
-  metadata:
-    labels:
-      app: prometheus
-    annotations:
-      config-version: "v2"
+    metadata:
+      labels:
+        app: prometheus
+      annotations:
+        config-version: "v2"
 
     spec:
       containers:
-
         - name: prometheus
-
           image: prom/prometheus
 
           ports:
@@ -39,7 +37,6 @@ spec:
             requests:
               cpu: "100m"
               memory: "128Mi"
-
             limits:
               cpu: "500m"
               memory: "512Mi"
