@@ -12,9 +12,11 @@ spec:
       app: prometheus
 
   template:
-    metadata:
-      labels:
-        app: prometheus
+  metadata:
+    labels:
+      app: prometheus
+    annotations:
+      config-version: "v2"
 
     spec:
       containers:
