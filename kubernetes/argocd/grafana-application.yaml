@@ -10,7 +10,7 @@ spec:
 
   source:
     repoURL: https://github.com/ais25131/cloud-native-infrastructure.git
-    targetRevision: HEAD
+    targetRevision: main
     path: kubernetes/apps/grafana/manifests
 
   destination:
@@ -21,3 +21,5 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
