@@ -3,7 +3,7 @@ kind: HorizontalPodAutoscaler
 
 metadata:
   name: order-api-hpa
-  namespace: default
+  namespace: order-api
 
 spec:
   scaleTargetRef:
