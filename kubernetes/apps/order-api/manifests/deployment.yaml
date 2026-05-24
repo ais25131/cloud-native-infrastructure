@@ -30,8 +30,9 @@ spec:
           env:
             - name: APP_VERSION
               value: "v1"
+
             - name: RABBITMQ_HOST
-              value: "rabbitmq"
+              value: "rabbitmq.default.svc.cluster.local"
 
           resources:
             requests:
