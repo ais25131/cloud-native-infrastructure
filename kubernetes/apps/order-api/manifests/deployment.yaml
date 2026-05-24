@@ -34,6 +34,12 @@ spec:
             - name: RABBITMQ_HOST
               value: "rabbitmq.default.svc.cluster.local"
 
+            - name: RABBITMQ_USER
+              value: "user"
+
+            - name: RABBITMQ_PASSWORD
+              value: "password"
+
           resources:
             requests:
               cpu: "100m"

@@ -15,7 +15,9 @@ orders = []
 # RabbitMQ Configuration
 #################################################
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.default.svc.cluster.local")
+RABBITMQ_USER = os.getenv("RABBITMQ_USER", "user")
+RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "password")
 
 #################################################
 # Prometheus Metrics
@@ -42,8 +44,16 @@ RABBITMQ_PUBLISH_TOTAL = Counter(
 
 def publish_order(order):
 
+    credentials = pika.PlainCredentials(
+        RABBITMQ_USER,
+        RABBITMQ_PASSWORD
+    )
+
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST)
+        pika.ConnectionParameters(
+            host=RABBITMQ_HOST,
+            credentials=credentials
+        )
     )
 
     channel = connection.channel()
