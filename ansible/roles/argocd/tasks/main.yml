@@ -9,18 +9,31 @@
 - name: Install ArgoCD
   command: >
     microk8s kubectl apply -n argocd
-    --server-side
-    --force-conflicts
     -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  become: true
+  register: argocd_install
+  failed_when: argocd_install.rc != 0 and 'configured' not in argocd_install.stdout and 'created' not in argocd_install.stdout
+  changed_when: "'created' in argocd_install.stdout or 'configured' in argocd_install.stdout"
+
+- name: Wait for ArgoCD deployments to be available
+  command: microk8s kubectl rollout status deployment -n argocd --timeout=600s
   become: true
   changed_when: false
 
-- name: Wait for ArgoCD pods
+- name: Wait for ArgoCD application controller pod to be created
+  command: microk8s kubectl get pod argocd-application-controller-0 -n argocd
+  become: true
+  register: argocd_controller_pod
+  retries: 60
+  delay: 10
+  until: argocd_controller_pod.rc == 0
+  changed_when: false
+
+- name: Wait for ArgoCD application controller pod to be Ready
   command: >
     microk8s kubectl wait
     --for=condition=Ready
-    pods
-    --all
+    pod/argocd-application-controller-0
     -n argocd
     --timeout=600s
   become: true
@@ -32,13 +45,15 @@
     -n argocd
     -p '{"spec": {"type": "ClusterIP"}}'
   become: true
-  changed_when: false
+  register: argocd_service_patch
+  failed_when: false
+  changed_when: "'patched' in argocd_service_patch.stdout"
 
 - name: Copy ArgoCD ingress manifest
   copy:
     src: argocd-ingress.yaml
     dest: /tmp/argocd-ingress.yaml
-    mode: '0644'
+    mode: "0644"
   become: true
 
 - name: Apply ArgoCD ingress
