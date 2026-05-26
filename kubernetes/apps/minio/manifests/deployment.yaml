@@ -44,7 +44,7 @@ spec:
               value: "http://minio-console.local"
 
             - name: MINIO_SERVER_URL
-              value: "http://minio.local"
+              value: "http://minio.minio.svc.cluster.local:9000"
 
           resources:
             requests:
