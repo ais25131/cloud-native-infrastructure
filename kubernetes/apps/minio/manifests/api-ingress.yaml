@@ -2,14 +2,14 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 
 metadata:
-  name: minio-api-ingress
+  name: minio-console-ingress
   namespace: minio
 
 spec:
   ingressClassName: public
 
   rules:
-    - host: minio-api.local
+    - host: minio-console.local
       http:
         paths:
           - path: /
@@ -18,4 +18,4 @@ spec:
               service:
                 name: minio
                 port:
-                  number: 9000
+                  number: 9001
