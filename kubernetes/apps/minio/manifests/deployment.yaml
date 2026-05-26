@@ -41,13 +41,10 @@ spec:
 
           env:
             - name: MINIO_BROWSER_REDIRECT_URL
-              value: "http://minio.local"
+              value: "http://minio-console.local"
 
             - name: MINIO_SERVER_URL
-              value: "http://minio-api.local"
-
-            - name: MINIO_API_CORS_ALLOW_ORIGIN
-              value: "http://minio.local"  
+              value: "http://minio.local"
 
           resources:
             requests:
