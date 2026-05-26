@@ -4,7 +4,7 @@ metadata:
   name: keycloak-ingress
   namespace: keycloak
 spec:
-  ingressClassName: public
+  ingressClassName: traefik
   rules:
     - host: keycloak.local
       http:
