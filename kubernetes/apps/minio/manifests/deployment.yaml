@@ -44,7 +44,7 @@ spec:
               value: "http://minio.local"
 
             - name: MINIO_SERVER_URL
-              value: "http://minio-api.local"
+              value: "http://minio.local"
 
           resources:
             requests:
