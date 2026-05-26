@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: minio
+  namespace: minio
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: minio
+
+  template:
+    metadata:
+      labels:
+        app: minio
+
+    spec:
+      containers:
+        - name: minio
+
+          image: minio/minio:latest
+
+          args:
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+
+          ports:
+            - containerPort: 9000
+
+            - containerPort: 9001
+
+          envFrom:
+            - secretRef:
+                name: minio-secret
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+          volumeMounts:
+            - name: minio-storage
+              mountPath: /data
+
+      volumes:
+        - name: minio-storage
+          persistentVolumeClaim:
+            claimName: minio-pvc
