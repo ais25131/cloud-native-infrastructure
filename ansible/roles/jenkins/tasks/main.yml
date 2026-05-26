@@ -16,6 +16,8 @@
       - ansible
       - git
       - curl
+      - gnupg
+      - nginx
     state: present
     update_cache: yes
   become: true
@@ -45,14 +47,14 @@
       deb [signed-by=/etc/apt/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/
   become: true
 
-#################################################
-# Install Jenkins
-#################################################
-
 - name: Update apt cache after Jenkins repo
   apt:
     update_cache: yes
   become: true
+
+#################################################
+# Jenkins
+#################################################
 
 - name: Install Jenkins
   apt:
@@ -68,7 +70,7 @@
   become: true
 
 #################################################
-# Docker Installation
+# Docker
 #################################################
 
 - name: Install Docker
@@ -76,10 +78,6 @@
   args:
     creates: /usr/bin/docker
   become: true
-
-#################################################
-# Docker Permissions
-#################################################
 
 - name: Add vagrant user to docker group
   user:
@@ -96,105 +94,7 @@
   become: true
 
 #################################################
-# Jenkins SSH Key for Ansible
-#################################################
-
-- name: Create Jenkins .ssh directory
-  file:
-    path: /var/lib/jenkins/.ssh
-    state: directory
-    owner: jenkins
-    group: jenkins
-    mode: "0700"
-  become: true
-
-- name: Copy ansible SSH private key to Jenkins
-  copy:
-    src: "{{ lookup('env', 'HOME') }}/.ssh/ansible_key"
-    dest: /var/lib/jenkins/.ssh/ansible_key
-    owner: jenkins
-    group: jenkins
-    mode: "0600"
-  become: true
-
-- name: Restart Jenkins after permissions and SSH key changes
-  systemd:
-    name: jenkins
-    state: restarted
-  become: true
-
-#################################################
-# Verify Installations
-#################################################
-
-- name: Check Jenkins status
-  systemd:
-    name: jenkins
-  register: jenkins_status
-  become: true
-
-- name: Show Jenkins status
-  debug:
-    var: jenkins_status.status.ActiveState
-
-#################################################
-# Nginx Reverse Proxy
-#################################################
-
-- name: Install nginx
-  apt:
-    name: nginx
-    state: present
-    update_cache: yes
-  become: true
-
-- name: Create Jenkins nginx reverse proxy config
-  copy:
-    dest: /etc/nginx/sites-available/jenkins.local
-    content: |
-      server {
-          listen 80;
-          server_name jenkins.local;
-
-          location / {
-              proxy_pass http://127.0.0.1:8080;
-
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-
-              proxy_read_timeout 90;
-          }
-      }
-  become: true
-
-- name: Enable Jenkins nginx site
-  file:
-    src: /etc/nginx/sites-available/jenkins.local
-    dest: /etc/nginx/sites-enabled/jenkins.local
-    state: link
-  become: true
-
-- name: Remove default nginx site
-  file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
-  become: true
-
-- name: Test nginx configuration
-  command: nginx -t
-  become: true
-
-- name: Restart and enable nginx
-  systemd:
-    name: nginx
-    enabled: yes
-    state: restarted
-  become: true
-
-#################################################
-# Jenkins SSH Agent Setup
+# Jenkins SSH Setup
 #################################################
 
 - name: Create Jenkins .ssh directory
@@ -228,7 +128,91 @@
 
 - name: Add k8s host to Jenkins known_hosts
   shell: |
-    ssh-keyscan -H 192.168.56.21 >> /var/lib/jenkins/.ssh/known_hosts
+    ssh-keyscan -H 192.168.56.21 > /var/lib/jenkins/.ssh/known_hosts
     chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts
     chmod 644 /var/lib/jenkins/.ssh/known_hosts
   become: true
+
+#################################################
+# Nginx Reverse Proxy for Jenkins
+#################################################
+
+- name: Create Jenkins nginx reverse proxy config
+  copy:
+    dest: /etc/nginx/sites-available/jenkins.local
+    content: |
+      server {
+          listen 80;
+          server_name jenkins.local;
+
+          location / {
+              proxy_pass http://127.0.0.1:8080;
+
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+
+              proxy_read_timeout 90;
+          }
+      }
+  become: true
+
+- name: Enable Jenkins nginx site
+  file:
+    src: /etc/nginx/sites-available/jenkins.local
+    dest: /etc/nginx/sites-enabled/jenkins.local
+    state: link
+    force: yes
+  become: true
+
+- name: Remove default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+
+- name: Test nginx configuration
+  command: nginx -t
+  become: true
+
+- name: Enable and restart nginx
+  systemd:
+    name: nginx
+    enabled: yes
+    state: restarted
+  become: true
+
+#################################################
+# Restart Jenkins after permissions
+#################################################
+
+- name: Restart Jenkins
+  systemd:
+    name: jenkins
+    state: restarted
+  become: true
+
+#################################################
+# Verify Installations
+#################################################
+
+- name: Check Jenkins status
+  systemd:
+    name: jenkins
+  register: jenkins_status
+  become: true
+
+- name: Show Jenkins status
+  debug:
+    var: jenkins_status.status.ActiveState
+
+- name: Check nginx status
+  systemd:
+    name: nginx
+  register: nginx_status
+  become: true
+
+- name: Show nginx status
+  debug:
+    var: nginx_status.status.ActiveState

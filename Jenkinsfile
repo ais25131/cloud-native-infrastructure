@@ -21,16 +21,18 @@ pipeline {
             steps {
                 dir('ansible') {
                     sh '''
-                    eval "$(ssh-agent -s)"
+                        set -e
 
-                    export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
-                    export DISPLAY=:0
+                        eval "$(ssh-agent -s)"
 
-                    setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
+                        export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
+                        export DISPLAY=:0
 
-                    ansible-playbook -i inventory.ini deploy-order-api.yml
+                        setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
 
-                    ssh-agent -k
+                        ansible-playbook -i inventory.ini deploy-order-api.yml
+
+                        ssh-agent -k
                     '''
                 }
             }
@@ -40,19 +42,31 @@ pipeline {
             steps {
                 dir('ansible') {
                     sh '''
-                    eval "$(ssh-agent -s)"
+                        set -e
 
-                    export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
-                    export DISPLAY=:0
+                        eval "$(ssh-agent -s)"
 
-                    setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
+                        export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
+                        export DISPLAY=:0
 
-                    ansible kubernetes -i inventory.ini -m shell -a "microk8s kubectl get pods -A"
+                        setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
 
-                    ssh-agent -k
+                        ansible kubernetes -i inventory.ini -m shell -a "microk8s kubectl get pods -A"
+
+                        ssh-agent -k
                     '''
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Jenkins pipeline completed successfully.'
+        }
+
+        failure {
+            echo 'Jenkins pipeline failed.'
         }
     }
 }
