@@ -9,11 +9,25 @@
 - name: Install ArgoCD
   command: >
     microk8s kubectl apply -n argocd
-    -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.11.7/manifests/install.yaml
   become: true
   register: argocd_install
   failed_when: argocd_install.rc != 0 and 'configured' not in argocd_install.stdout and 'created' not in argocd_install.stdout
   changed_when: "'created' in argocd_install.stdout or 'configured' in argocd_install.stdout"
+
+- name: Configure ArgoCD server to run insecure behind ingress TLS
+  command: >
+    microk8s kubectl patch configmap argocd-cmd-params-cm
+    -n argocd
+    --type merge
+    -p '{"data":{"server.insecure":"true"}}'
+  become: true
+  changed_when: false
+
+- name: Restart ArgoCD server after insecure config
+  command: microk8s kubectl rollout restart deployment argocd-server -n argocd
+  become: true
+  changed_when: false
 
 - name: Wait for ArgoCD deployments to be available
   command: microk8s kubectl rollout status deployment -n argocd --timeout=600s
@@ -48,6 +62,27 @@
   register: argocd_service_patch
   failed_when: false
   changed_when: "'patched' in argocd_service_patch.stdout"
+
+- name: Create self-signed TLS certificate for ArgoCD
+  shell: |
+    openssl req -x509 -nodes -days 365 \
+      -newkey rsa:2048 \
+      -keyout /tmp/argocd.local.key \
+      -out /tmp/argocd.local.crt \
+      -subj "/CN=argocd.local/O=argocd.local" \
+      -addext "subjectAltName=DNS:argocd.local"
+  become: true
+  changed_when: false
+
+- name: Create ArgoCD TLS secret
+  shell: |
+    microk8s kubectl delete secret argocd-local-tls -n argocd --ignore-not-found=true
+    microk8s kubectl create secret tls argocd-local-tls \
+      -n argocd \
+      --cert=/tmp/argocd.local.crt \
+      --key=/tmp/argocd.local.key
+  become: true
+  changed_when: false
 
 - name: Copy ArgoCD ingress manifest
   copy:

@@ -20,9 +20,9 @@ spec:
       containers:
         - name: order-api
 
-          image: order-api:v1
+          image: ais25131/order-api:v1
 
-          imagePullPolicy: Never
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 5000

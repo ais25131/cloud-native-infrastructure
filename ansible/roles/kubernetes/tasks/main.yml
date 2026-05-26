@@ -34,17 +34,6 @@
     mode: "0755"
   become: true
 
-- name: Check MicroK8s resources before status
-  command: microk8s kubectl get all,ingress --all-namespaces
-  become: true
-  register: microk8s_resources_check
-  changed_when: false
-  failed_when: false
-
-- name: Show MicroK8s resources check
-  debug:
-    var: microk8s_resources_check
-
 - name: Wait for MicroK8s to be ready
   command: microk8s status --wait-ready
   become: true
@@ -59,6 +48,7 @@
 - name: Export kubeconfig for vagrant user
   shell: microk8s config > /home/vagrant/.kube/config
   become: true
+  changed_when: false
 
 - name: Fix kubeconfig ownership
   file:
