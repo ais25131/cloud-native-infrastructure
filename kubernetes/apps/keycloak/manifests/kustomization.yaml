@@ -7,4 +7,4 @@ resources:
   - postgres-pvc.yaml
   - postgres.yaml
   - keycloak-secret.yaml
-  - keycloak.yaml
+  - deployment.yaml
