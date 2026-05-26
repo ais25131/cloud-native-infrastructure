@@ -6,3 +6,5 @@ resources:
   - postgres-secret.yaml
   - postgres-pvc.yaml
   - postgres.yaml
+  - keycloak-secret.yaml
+  - keycloak.yaml
