@@ -20,7 +20,6 @@ spec:
     spec:
       containers:
         - name: grafana
-
           image: grafana/grafana:latest
 
           ports:
@@ -35,9 +34,17 @@ spec:
 
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
-
+              cpu: "200m"
+              memory: "512Mi"
             limits:
-              cpu: "500m"
-              memory: "256Mi"
+              cpu: "1000m"
+              memory: "1Gi"
+
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-pvc
