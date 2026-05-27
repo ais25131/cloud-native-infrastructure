@@ -1,23 +1,49 @@
-containers:
-  - name: mariadb
-    image: mariadb:11
-
-    ports:
-      - containerPort: 3306
-
-    envFrom:
-      - secretRef:
-          name: wordpress-mariadb-secret
-
-    volumeMounts:
-      - name: mariadb-storage
-        mountPath: /var/lib/mysql
-
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "250m"
-
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-mariadb
+  namespace: wordpress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress-mariadb
+  template:
+    metadata:
+      labels:
+        app: wordpress-mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:11
+          ports:
+            - containerPort: 3306
+          envFrom:
+            - secretRef:
+                name: wordpress-mariadb-secret
+          volumeMounts:
+            - name: mariadb-storage
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: mariadb-storage
+          persistentVolumeClaim:
+            claimName: wordpress-mariadb-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-mariadb
+  namespace: wordpress
+spec:
+  selector:
+    app: wordpress-mariadb
+  ports:
+    - port: 3306
+      targetPort: 3306
