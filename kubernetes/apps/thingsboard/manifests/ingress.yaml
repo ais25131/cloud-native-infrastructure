@@ -15,4 +15,4 @@ spec:
               service:
                 name: thingsboard
                 port:
-                  number: 8080
+                  number: 9090
