@@ -17,22 +17,16 @@ spec:
         - name: thingsboard
           image: thingsboard/tb-postgres:3.8.1
           ports:
-            - containerPort: 8080
+            - containerPort: 9090
+            - containerPort: 1883
+            - containerPort: 7070
           env:
             - name: TB_QUEUE_TYPE
               value: in-memory
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://thingsboard-postgres:5432/thingsboard
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: thingsboard-postgres-secret
-                  key: POSTGRES_USER
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: thingsboard-postgres-secret
-                  key: POSTGRES_PASSWORD
+            - name: SECURITY_BASIC_ENABLED
+              value: "true"
+            - name: SECURITY_OAUTH2_ENABLED
+              value: "false"
           volumeMounts:
             - name: thingsboard-storage
               mountPath: /data
@@ -57,5 +51,12 @@ spec:
   selector:
     app: thingsboard
   ports:
-    - port: 8080
-      targetPort: 8080
+    - name: http
+      port: 9090
+      targetPort: 9090
+    - name: mqtt
+      port: 1883
+      targetPort: 1883
+    - name: edge
+      port: 7070
+      targetPort: 7070
