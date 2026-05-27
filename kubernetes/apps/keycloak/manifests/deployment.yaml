@@ -18,6 +18,10 @@ spec:
           image: quay.io/keycloak/keycloak:25.0.6
           args:
             - start-dev
+            - --hostname=keycloak.local
+            - --hostname-strict=false
+            - --http-enabled=true
+            - --proxy-headers=xforwarded
           ports:
             - containerPort: 8080
           env:
@@ -40,14 +44,6 @@ spec:
                 secretKeyRef:
                   name: keycloak-postgres-secret
                   key: POSTGRES_PASSWORD
-            - name: KC_HOSTNAME
-              value: keycloak.local
-            - name: KC_HOSTNAME_STRICT
-              value: "false"
-            - name: KC_HTTP_ENABLED
-              value: "true"
-            - name: KC_PROXY_HEADERS
-              value: xforwarded
           envFrom:
             - secretRef:
                 name: keycloak-secret
