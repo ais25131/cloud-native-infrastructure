@@ -5,7 +5,7 @@ metadata:
   name: order-api-ingress
 
 spec:
-  ingressClassName: public
+  ingressClassName: traefik
 
   rules:
     - host: order-api.local

@@ -192,6 +192,15 @@
     name: jenkins
     state: restarted
   become: true
+  async: 300
+  poll: 0
+
+- name: Wait for Jenkins port
+  wait_for:
+    host: 192.168.56.22
+    port: 8080
+    delay: 20
+    timeout: 300
 
 #################################################
 # Verify Installations

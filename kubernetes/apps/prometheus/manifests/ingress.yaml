@@ -6,7 +6,7 @@ metadata:
   namespace: monitoring
 
 spec:
-  ingressClassName: public
+  ingressClassName: traefik
 
   rules:
     - host: prometheus.local

@@ -6,7 +6,7 @@ metadata:
   namespace: minio
 
 spec:
-  ingressClassName: public
+  ingressClassName: traefik
 
   rules:
     - host: minio.local
