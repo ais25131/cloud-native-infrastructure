@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: thingsboard
-          image: thingsboard/tb-node:3.8.1
+          image: thingsboard/tb-postgres:3.8.1
           ports:
             - containerPort: 8080
           env:
