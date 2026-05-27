@@ -1,0 +1,22 @@
+containers:
+  - name: wordpress
+    image: wordpress:6.6-apache
+
+    ports:
+      - containerPort: 80
+
+    env:
+      ...
+
+    volumeMounts:
+      - name: wordpress-storage
+        mountPath: /var/www/html
+
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
