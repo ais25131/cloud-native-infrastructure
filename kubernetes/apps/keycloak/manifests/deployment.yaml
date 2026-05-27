@@ -18,7 +18,7 @@ spec:
           image: quay.io/keycloak/keycloak:25.0.6
           args:
             - start-dev
-            - --hostname=keycloak.local
+            - --hostname=http://keycloak.local
             - --hostname-strict=false
             - --http-enabled=true
             - --proxy-headers=xforwarded
