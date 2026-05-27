@@ -41,15 +41,13 @@ spec:
                   name: keycloak-postgres-secret
                   key: POSTGRES_PASSWORD
             - name: KC_HOSTNAME
-              value: http://keycloak.local
-            - name: KC_HOSTNAME_ADMIN
-              value: http://keycloak.local
-            - name: KC_PROXY_HEADERS
-              value: xforwarded
+              value: keycloak.local
             - name: KC_HOSTNAME_STRICT
               value: "false"
             - name: KC_HTTP_ENABLED
               value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
           envFrom:
             - secretRef:
                 name: keycloak-secret

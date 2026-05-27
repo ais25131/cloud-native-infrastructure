@@ -3,6 +3,8 @@ kind: Ingress
 metadata:
   name: keycloak-ingress
   namespace: keycloak
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   ingressClassName: traefik
   rules:
