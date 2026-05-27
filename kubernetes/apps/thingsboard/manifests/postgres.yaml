@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thingsboard-postgres
+  namespace: thingsboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thingsboard-postgres
+  template:
+    metadata:
+      labels:
+        app: thingsboard-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: thingsboard-postgres-secret
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: thingsboard-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thingsboard-postgres
+  namespace: thingsboard
+spec:
+  selector:
+    app: thingsboard-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: thingsboard-ingress
+  namespace: thingsboard
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: thingsboard.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: thingsboard
+                port:
+                  number: 8080

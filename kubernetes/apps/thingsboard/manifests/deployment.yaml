@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thingsboard
+  namespace: thingsboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thingsboard
+  template:
+    metadata:
+      labels:
+        app: thingsboard
+    spec:
+      containers:
+        - name: thingsboard
+          image: thingsboard/tb-node:3.8.1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TB_QUEUE_TYPE
+              value: in-memory
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://thingsboard-postgres:5432/thingsboard
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: thingsboard-postgres-secret
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: thingsboard-postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: thingsboard-storage
+              mountPath: /data
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1500m"
+      volumes:
+        - name: thingsboard-storage
+          persistentVolumeClaim:
+            claimName: thingsboard-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thingsboard
+  namespace: thingsboard
+spec:
+  selector:
+    app: thingsboard
+  ports:
+    - port: 8080
+      targetPort: 8080
