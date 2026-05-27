@@ -8,4 +8,3 @@ resources:
   - postgres.yaml
   - keycloak-secret.yaml
   - deployment.yaml
-  - ingress.yaml
