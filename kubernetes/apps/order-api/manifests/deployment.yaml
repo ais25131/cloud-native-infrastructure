@@ -20,7 +20,7 @@ spec:
       containers:
         - name: order-api
 
-          image: ais25131/order-api:v1
+          image: ais25131/order-api:v2
 
           imagePullPolicy: Always
 
