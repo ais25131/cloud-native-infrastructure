@@ -21,8 +21,8 @@ spec:
       containers:
         - name: order-api
 
-          image: ais25131/order-api:v2
-          imagePullPolicy: IfNotPresent
+          image: docker.io/library/order-api:v2
+          imagePullPolicy: Never
 
           ports:
             - containerPort: 5000
