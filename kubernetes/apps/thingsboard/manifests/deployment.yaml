@@ -27,6 +27,9 @@ spec:
               value: "true"
             - name: SECURITY_OAUTH2_ENABLED
               value: "false"
+            - name: JAVA_OPTS
+              value: "-Xms512m -Xmx1536m"
+              
           volumeMounts:
             - name: thingsboard-storage
               mountPath: /data
