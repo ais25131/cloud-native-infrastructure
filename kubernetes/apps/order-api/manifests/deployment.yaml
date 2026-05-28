@@ -32,7 +32,7 @@ spec:
               value: "v1"
 
             - name: RABBITMQ_HOST
-              value: "rabbitmq.default.svc.cluster.local"
+              value: "rabbitmq.rabbitmq.svc.cluster.local"
 
             - name: RABBITMQ_USER
               value: "user"
