@@ -8,3 +8,4 @@ resources:
   - postgres.yaml
   - keycloak-secret.yaml
   - deployment.yaml
+  - realm-configmap.yaml

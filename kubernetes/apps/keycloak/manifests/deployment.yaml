@@ -17,7 +17,6 @@ spec:
     spec:
       containers:
         - name: keycloak
-
           image: quay.io/keycloak/keycloak:25.0.6
 
           args:
@@ -25,6 +24,7 @@ spec:
             - --hostname=http://192.168.56.21:30080
             - --hostname-strict=false
             - --http-enabled=true
+            - --import-realm
 
           ports:
             - containerPort: 8080
@@ -62,25 +62,30 @@ spec:
             requests:
               memory: "512Mi"
               cpu: "250m"
-
             limits:
               memory: "1Gi"
               cpu: "1000m"
 
+          volumeMounts:
+            - name: keycloak-realm-import
+              mountPath: /opt/keycloak/data/import/realm-export.json
+              subPath: realm-export.json
+
+      volumes:
+        - name: keycloak-realm-import
+          configMap:
+            name: keycloak-realm-import
+
 ---
 apiVersion: v1
 kind: Service
-
 metadata:
   name: keycloak
   namespace: keycloak
-
 spec:
   type: NodePort
-
   selector:
     app: keycloak
-
   ports:
     - port: 8080
       targetPort: 8080
