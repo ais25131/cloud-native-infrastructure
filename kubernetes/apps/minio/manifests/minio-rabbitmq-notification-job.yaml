@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-rabbitmq-notification-setup
+  namespace: minio
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: minio/mc:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mc alias set local http://minio.minio.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+
+              mc mb --ignore-existing local/orders
+
+              mc admin config set local notify_amqp:1 \
+                url="amqp://user:password@rabbitmq.rabbitmq.svc.cluster.local:5672" \
+                exchange="amq.topic" \
+                exchange_type="topic" \
+                routing_key="system.minio" \
+                mandatory="off" \
+                durable="off" \
+                no_wait="off"
+
+              mc admin service restart local
+
+              sleep 15
+
+              mc event add local/orders arn:minio:sqs::1:amqp --event put,delete
+              mc event list local/orders
+          envFrom:
+            - secretRef:
+                name: minio-secret
