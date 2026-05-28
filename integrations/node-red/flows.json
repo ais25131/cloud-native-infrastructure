@@ -1,0 +1,640 @@
+[
+    {
+        "id": "b016700d924c37ba",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "0057f4913d34f32e",
+        "type": "amqp-broker",
+        "name": "rabbitmq",
+        "host": "10.22.11.15",
+        "port": "5672",
+        "vhost": "",
+        "tls": false,
+        "credsFromSettings": false
+    },
+    {
+        "id": "db40eb337df1f6a7",
+        "type": "minio-config",
+        "name": "MinIO Instance",
+        "host": "minio",
+        "port": "9000",
+        "useSsl": false
+    },
+    {
+        "id": "0f84265a3232f2e7",
+        "type": "mqtt-broker",
+        "name": "thingsboard",
+        "broker": "10.22.11.15",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "adb5a33366cd7c47",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "thingsboard",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "05c9e5f4f9fe878f",
+        "type": "aws-config",
+        "endpoint": "http://minio:9000",
+        "forcepathstyle": true,
+        "skiptlsverify": false
+    },
+    {
+        "id": "4153b08e5d491b04",
+        "type": "amqp-in",
+        "z": "b016700d924c37ba",
+        "name": "",
+        "broker": "0057f4913d34f32e",
+        "prefetch": 0,
+        "noAck": true,
+        "exchangeName": "amq.topic",
+        "exchangeType": "topic",
+        "exchangeRoutingKey": "system.minio",
+        "exchangeDurable": true,
+        "queueName": "events",
+        "queueExclusive": false,
+        "queueDurable": true,
+        "queueAutoDelete": false,
+        "headers": "{}",
+        "x": 160,
+        "y": 120,
+        "wires": [
+            [
+                "b4cbe51e5efc169d",
+                "069c626bb63a039c"
+            ]
+        ]
+    },
+    {
+        "id": "b4cbe51e5efc169d",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 380,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "d78f74f2565f1998",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 640,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "069c626bb63a039c",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "parse MinIO notification",
+        "func": "// 1) Parse AMQP body (Buffer -> JSON)\n let data = msg.payload;\n \n if (msg.content) {\n const text = msg.content.toString(\"utf8\");\n try {\n data = JSON.parse(text);\n } catch (e) {\n // 1ο output: raw προς debug/mqtt\n const rawMsg = { ...msg, payload: { raw: text } };\n // 2ο output: τίποτα\n return [rawMsg, null];\n }\n }\n // 2) Flat notification payload\n const rec = (data.Records && data.Records[0]) ? data.Records[0] : {};\n \n const flat = {\n event: data.EventName || rec.eventName || \"unknown\",\n objectKey: data.Key || (rec.s3 && rec.s3.object && rec.s3.object.key) || \"unknown\",\n bucket: (rec.s3 && rec.s3.bucket && rec.s3.bucket.name) || \"unknown\",\n size: (rec.s3 && rec.s3.object && rec.s3.object.size) || 0,\n eventTime: rec.eventTime || new Date().toISOString()\n };\n \n // 1ο output: raw telemetry\n const rawMsg = { ...msg, payload: flat };\n \n // 2ο output: για downstream MinIO GET (ίδιο payload)\n const dlMsg = { ...msg, payload: flat };\n \n return [rawMsg, dlMsg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 120,
+        "wires": [
+            [
+                "d78f74f2565f1998"
+            ],
+            [
+                "c4e860022dee184b"
+            ]
+        ]
+    },
+    {
+        "id": "707e1c30c4e6852e",
+        "type": "http in",
+        "z": "b016700d924c37ba",
+        "name": "",
+        "url": "/wp-event",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 160,
+        "y": 380,
+        "wires": [
+            [
+                "15369ccd8703a38f"
+            ]
+        ]
+    },
+    {
+        "id": "15369ccd8703a38f",
+        "type": "json",
+        "z": "b016700d924c37ba",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 390,
+        "y": 380,
+        "wires": [
+            [
+                "3ceb81deace8706e"
+            ]
+        ]
+    },
+    {
+        "id": "3ceb81deace8706e",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "validate_wp_event",
+        "func": "const expectedSecret = \"supersecret123\";\nconst receivedSecret = msg.req?.headers?.[\"x-event-secret\"];\n\n// Πάρε το payload και κάνε parse αν είναι string\nlet event = msg.payload;\n\nif (typeof event === \"string\") {\n    try { event = JSON.parse(event); } catch(e) {}\n}\n\nif (receivedSecret !== expectedSecret) {\n    msg.statusCode = 401;\n    msg.payload = { error: \"Unauthorized\" };\n    return msg;\n}\n\nif (!event || !event.event_type) {\n    msg.statusCode = 400;\n    msg.payload = { error: \"Invalid payload\" };\n    return msg;\n}\n\nmsg.statusCode = 200;\nmsg.event = event;              // κρατάμε το κανονικό event object\nmsg.payload = { status: \"ok\" }; // απάντηση\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 380,
+        "wires": [
+            [
+                "dbe63217bad2433d",
+                "791cbca18c91ae35"
+            ]
+        ]
+    },
+    {
+        "id": "b38e7bedfdf62d61",
+        "type": "http response",
+        "z": "b016700d924c37ba",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1110,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "dbe63217bad2433d",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 7",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 780,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "791cbca18c91ae35",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "build_minio_object",
+        "func": "/**\n * Function node: build_s3_object\n * Outputs:\n *  1) HTTP response (status ok)\n *  2) Upload message for amazon s3 out (MinIO)\n */\n\nconst e = msg.event || msg.payload;\n\n// Safety: αν δεν υπάρχει event, γυρνά error στον client\nif (!e || typeof e !== \"object\") {\n  const responseMsg = {\n    ...msg,\n    statusCode: 400,\n    payload: { error: \"Missing event object\" }\n  };\n  return [responseMsg, null];\n}\n\n// timestamp safe για filename\nconst now = new Date();\nconst yyyy = now.getFullYear();\nconst mm = String(now.getMonth() + 1).padStart(2, \"0\");\nconst dd = String(now.getDate()).padStart(2, \"0\");\nconst ts = now.toISOString().replace(/[:.]/g, \"-\");\n\n// βασικά πεδία\nconst type = e.event_type || \"unknown\";\nconst user =\n  e.user?.username ||\n  e.order?.user?.username ||\n  \"anonymous\";\n\n// Key μέσα στο bucket (ΜΗΝ ξεκινάει με \"events/\")\nconst key = `${type}/${yyyy}/${mm}/${dd}/${ts}_${user}.json`;\n\n// --- Μήνυμα για upload (Output 2) ---\nconst uploadMsg = {\n  ...msg,\n  payload: JSON.stringify(e),\n  key: key,              // <-- ΣΗΜΑΝΤΙΚΟ\n  filename: key,         // <-- κρατάμε και αυτό για compatibility\n  objectKey: key,        // <-- extra (μερικά nodes το κοιτάνε)\n  s3: { key: key }       // <-- extra\n};\n// --- Μήνυμα για HTTP response (Output 1) ---\nconst responseMsg = {\n  ...msg,\n  statusCode: 200,\n  payload: { status: \"ok\" }\n};\n\nreturn [responseMsg, uploadMsg];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 380,
+        "wires": [
+            [
+                "b65023957439ef71",
+                "b38e7bedfdf62d61"
+            ],
+            [
+                "85edce7f51407aaa",
+                "17759adc2123c8bd"
+            ]
+        ]
+    },
+    {
+        "id": "b65023957439ef71",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 8",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1060,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "85edce7f51407aaa",
+        "type": "amazon s3 out",
+        "z": "b016700d924c37ba",
+        "aws": "05c9e5f4f9fe878f",
+        "bucket": "events",
+        "filename": "",
+        "localFilename": "",
+        "region": "us-east-1",
+        "name": "Minio events",
+        "x": 1120,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "de26b1d9be6f695e",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "normalize_object_key",
+        "func": "const bucket = msg.payload.bucket;\nlet key = msg.payload.objectKey;\n\n// αφαίρεσε bucket prefix αν έρθει bucket/key\nif (key && bucket && key.startsWith(bucket + \"/\")) {\n    key = key.slice((bucket + \"/\").length);\n}\n\n// URL decode (MinIO notifications συχνά είναι encoded)\nif (key) {\n    try {\n        key = decodeURIComponent(key.replace(/\\+/g, '%20'));\n    } catch (e) {\n        // ignore\n    }\n}\n\nmsg.minio = { bucket, key };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 160,
+        "wires": [
+            [
+                "4ce403a2f8a05d8a",
+                "5ca64b0272419832"
+            ]
+        ]
+    },
+    {
+        "id": "c28f664e20debb38",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "build_business_telemetry",
+        "func": "const ev = msg.payload || {};\nconst type = ev.event_type || \"unknown\";\nconst user = (ev.user && ev.user.username) ? ev.user.username : \"unknown\";\n\n// helper: count items\nfunction countItems(items) {\n  if (!Array.isArray(items)) return 0;\n  return items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0);\n}\n\nlet cartItems = 0;\nlet orderItems = 0;\n\nif (type === \"cart_add\") {\n  cartItems = countItems(ev.cart && ev.cart.items);\n}\n\nif (type === \"order_created\") {\n  orderItems = countItems(ev.order && ev.order.items);\n}\n\n// Φτιάχνουμε “μήνυμα” για να βλέπεις ακριβώς αυτό που είπες\nlet message = `Ο χρήστης ${user} έκανε event ${type}`;\n\nif (type === \"login\") {\n  message = `Ο χρήστης ${user} συνδέθηκε`;\n}\n\nif (type === \"cart_add\") {\n  message = `Ο χρήστης ${user} έβαλε στο καλάθι ${cartItems} προϊόντα`;\n}\n\nif (type === \"order_created\") {\n  message = `Ο χρήστης ${user} παρήγγειλε ${orderItems} προϊόντα`;\n}\n\nmsg.payload = {\n  username: user,\n  event_type: type,\n  cart_items: cartItems,\n  order_items: orderItems,\n  message: message,\n  // προαιρετικά κρατάς και το raw event\n};\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1970,
+        "y": 120,
+        "wires": [
+            [
+                "747bf408966287d0",
+                "3ec77c4a733c66cb"
+            ]
+        ]
+    },
+    {
+        "id": "747bf408966287d0",
+        "type": "mqtt out",
+        "z": "b016700d924c37ba",
+        "name": "",
+        "topic": "v1/devices/me/telemetry",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "adb5a33366cd7c47",
+        "x": 2250,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "4ce403a2f8a05d8a",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "build_mc_cat_command",
+        "func": "const bucket = msg.minio.bucket;\nconst key = msg.minio.key;\n\nif (!bucket || !key || key === \"unknown\") {\n  node.error(\"Missing bucket/key\", msg);\n  return null;\n}\n\nconst s3path = `myminio/${bucket}/${key}`;\n\nmsg.payload =\n  `set -e; ` +\n  `export MC_HOST_myminio=\"http://ais25131:!!Ais123@minio:9000\"; ` +\n  `/data/mc cat \"${s3path}\"`;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1030,
+        "y": 200,
+        "wires": [
+            [
+                "6ffd6ad085d84a54",
+                "2631bb2e8d479c5e"
+            ]
+        ]
+    },
+    {
+        "id": "5ca64b0272419832",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1000,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "6ffd6ad085d84a54",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1220,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "2631bb2e8d479c5e",
+        "type": "exec",
+        "z": "b016700d924c37ba",
+        "command": "sh -lc",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 1230,
+        "y": 160,
+        "wires": [
+            [
+                "840050d80874acd9",
+                "8561ca433e1b057f"
+            ],
+            [
+                "237dae9612994cf4"
+            ],
+            [
+                "247e6dcec26d6372"
+            ]
+        ]
+    },
+    {
+        "id": "840050d80874acd9",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "exec stdout",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1410,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "237dae9612994cf4",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "exec stderr",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1410,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "247e6dcec26d6372",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "exec rc",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1400,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "8561ca433e1b057f",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "clean_json_from_stdout",
+        "func": "if (typeof msg.payload !== \"string\") msg.payload = String(msg.payload || \"\");\nconst out = msg.payload.trim();\n\n// βρες το πρώτο '{'\nconst i = out.indexOf(\"{\");\nif (i === -1) {\n  node.error(\"No JSON found in exec stdout\", msg);\n  return null;\n}\n\nconst jsonText = out.slice(i).trim();\n\ntry {\n  msg.payload = JSON.parse(jsonText);\n  return msg;\n} catch (e) {\n  node.error(\"JSON parse failed. First 200 chars: \" + jsonText.slice(0,200), msg);\n  return null;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1470,
+        "y": 80,
+        "wires": [
+            [
+                "8ca95187ac5069e9",
+                "12b00935d52d6c5c"
+            ]
+        ]
+    },
+    {
+        "id": "12b00935d52d6c5c",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "parse_event_json",
+        "func": "if (typeof msg.payload === \"string\") {\n  const s = msg.payload.trim();\n  msg.payload = JSON.parse(s);\n}\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1710,
+        "y": 100,
+        "wires": [
+            [
+                "c28f664e20debb38",
+                "4b42a0fba734df1f"
+            ]
+        ]
+    },
+    {
+        "id": "3ec77c4a733c66cb",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 6",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2020,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "8ca95187ac5069e9",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 9",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1580,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "4b42a0fba734df1f",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug 10",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1800,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "17759adc2123c8bd",
+        "type": "debug",
+        "z": "b016700d924c37ba",
+        "name": "debug build-minio",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1130,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "c4e860022dee184b",
+        "type": "function",
+        "z": "b016700d924c37ba",
+        "name": "function 1",
+        "func": "// function: filter_only_object_created\nconst ev = msg.payload?.event || \"\";\n\n// ΠΕΡΝΑΜΕ ΜΟΝΟ ObjectCreated (Put/Post/CompleteMultipartUpload κλπ)\nif (!ev.startsWith(\"s3:ObjectCreated:\")) {\n  // κόβει Accessed:Head, Accessed:Get, Removed, κλπ\n  return null;\n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 180,
+        "wires": [
+            [
+                "de26b1d9be6f695e"
+            ]
+        ]
+    }
+]
