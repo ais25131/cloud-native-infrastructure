@@ -1,5 +1,6 @@
 resources:
   - namespace.yaml
   - thingsboard-pvc.yaml
+  - export-configmap.yaml
   - deployment.yaml
   - ingress.yaml
