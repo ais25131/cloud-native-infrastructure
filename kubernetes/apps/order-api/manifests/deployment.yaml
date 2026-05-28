@@ -22,14 +22,14 @@ spec:
 
           image: ais25131/order-api:v2
 
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           ports:
             - containerPort: 5000
 
           env:
             - name: APP_VERSION
-              value: "v1"
+              value: "v2"
 
             - name: RABBITMQ_HOST
               value: "rabbitmq.rabbitmq.svc.cluster.local"
