@@ -3,6 +3,7 @@ kind: Deployment
 
 metadata:
   name: order-api
+  namespace: order-api
 
 spec:
   replicas: 1
@@ -21,7 +22,6 @@ spec:
         - name: order-api
 
           image: ais25131/order-api:v2
-
           imagePullPolicy: IfNotPresent
 
           ports:
@@ -48,13 +48,3 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
-
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5000
