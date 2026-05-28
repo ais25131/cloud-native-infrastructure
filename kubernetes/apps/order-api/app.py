@@ -11,18 +11,10 @@ app = Flask(__name__)
 
 orders = []
 
-#################################################
-# RabbitMQ Configuration
-#################################################
-
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.rabbitmq.svc.cluster.local")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "user")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "password")
 RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "orders")
-
-#################################################
-# Prometheus Metrics
-#################################################
 
 ORDERS_CREATED_TOTAL = Counter(
     "orders_created_total",
@@ -39,9 +31,6 @@ RABBITMQ_PUBLISH_TOTAL = Counter(
     "Total number of messages published to RabbitMQ"
 )
 
-#################################################
-# RabbitMQ Publisher
-#################################################
 
 def publish_order(order):
     credentials = pika.PlainCredentials(
@@ -58,24 +47,20 @@ def publish_order(order):
 
     channel = connection.channel()
 
-    channel.queue_declare(queue=RABBITMQ_QUEUE, durable=True)
+    channel.queue_declare(
+        queue=RABBITMQ_QUEUE,
+        durable=False
+    )
 
     channel.basic_publish(
         exchange="",
         routing_key=RABBITMQ_QUEUE,
-        body=json.dumps(order),
-        properties=pika.BasicProperties(
-            delivery_mode=2
-        )
+        body=json.dumps(order)
     )
 
     connection.close()
-
     RABBITMQ_PUBLISH_TOTAL.inc()
 
-#################################################
-# Routes
-#################################################
 
 @app.route("/")
 def home():
@@ -83,7 +68,7 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "v1")
+        "version": os.getenv("APP_VERSION", "v2")
     })
 
 
