@@ -15,9 +15,10 @@ orders = []
 # RabbitMQ Configuration
 #################################################
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.default.svc.cluster.local")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.rabbitmq.svc.cluster.local")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "user")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "password")
+RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "orders")
 
 #################################################
 # Prometheus Metrics
@@ -43,7 +44,6 @@ RABBITMQ_PUBLISH_TOTAL = Counter(
 #################################################
 
 def publish_order(order):
-
     credentials = pika.PlainCredentials(
         RABBITMQ_USER,
         RABBITMQ_PASSWORD
@@ -58,12 +58,15 @@ def publish_order(order):
 
     channel = connection.channel()
 
-    channel.queue_declare(queue="orders")
+    channel.queue_declare(queue=RABBITMQ_QUEUE, durable=True)
 
     channel.basic_publish(
         exchange="",
-        routing_key="orders",
-        body=json.dumps(order)
+        routing_key=RABBITMQ_QUEUE,
+        body=json.dumps(order),
+        properties=pika.BasicProperties(
+            delivery_mode=2
+        )
     )
 
     connection.close()
@@ -83,15 +86,18 @@ def home():
         "version": os.getenv("APP_VERSION", "v1")
     })
 
+
 @app.route("/health")
 def health():
     return jsonify({
         "status": "healthy"
     })
 
+
 @app.route("/metrics")
 def metrics():
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
 
 @app.route("/orders", methods=["GET"])
 def get_orders():
@@ -100,12 +106,14 @@ def get_orders():
         "count": len(orders)
     })
 
+
 @app.route("/orders", methods=["POST"])
 def create_order():
-
-    data = request.get_json()
+    data = request.get_json() or {}
 
     order = {
+        "event_type": "manual_order_created",
+        "source": "order-api",
         "id": len(orders) + 1,
         "product": data.get("product"),
         "quantity": data.get("quantity"),
@@ -123,6 +131,52 @@ def create_order():
         "message": "Order created",
         "order": order
     }), 201
+
+
+@app.route("/webhooks/woocommerce/order", methods=["POST"])
+def woocommerce_order_webhook():
+    data = request.get_json() or {}
+
+    line_items = data.get("line_items", [])
+    billing = data.get("billing", {})
+
+    order = {
+        "event_type": "woocommerce_order_created",
+        "source": "woocommerce",
+        "id": len(orders) + 1,
+        "woocommerce_order_id": data.get("id"),
+        "status": data.get("status"),
+        "currency": data.get("currency"),
+        "total": data.get("total"),
+        "customer_email": billing.get("email"),
+        "customer_name": (
+            billing.get("first_name", "") + " " +
+            billing.get("last_name", "")
+        ).strip(),
+        "items": [
+            {
+                "product_id": item.get("product_id"),
+                "name": item.get("name"),
+                "quantity": item.get("quantity"),
+                "total": item.get("total")
+            }
+            for item in line_items
+        ],
+        "created_at": datetime.utcnow().isoformat()
+    }
+
+    orders.append(order)
+
+    ORDERS_CREATED_TOTAL.inc()
+    ORDERS_IN_MEMORY.set(len(orders))
+
+    publish_order(order)
+
+    return jsonify({
+        "message": "WooCommerce order received",
+        "order": order
+    }), 201
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
