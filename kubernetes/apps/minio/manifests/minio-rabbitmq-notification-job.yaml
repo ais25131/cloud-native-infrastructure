@@ -3,6 +3,9 @@ kind: Job
 metadata:
   name: minio-rabbitmq-notification-setup
   namespace: minio
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   template:
     spec:
