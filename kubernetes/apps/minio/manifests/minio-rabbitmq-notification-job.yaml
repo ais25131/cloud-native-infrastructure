@@ -33,8 +33,9 @@ spec:
 
               sleep 10
 
-              mc event add local/orders arn:minio:sqs::1:amqp --event put,delete
-              mc event list local/orders
+                mc event remove local/orders arn:minio:sqs::1:amqp --event put,delete || true
+                mc event add local/orders arn:minio:sqs::1:amqp --event put,delete
+                mc event list local/orders
           envFrom:
             - secretRef:
                 name: minio-secret
