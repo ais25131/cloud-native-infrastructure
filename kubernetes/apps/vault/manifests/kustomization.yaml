@@ -3,8 +3,8 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - vault-config.yaml
-  - vault-pvc.yaml
-  - vault-deployment.yaml
-  - vault-service.yaml
-  - vault-ingress.yaml
+  - config.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
