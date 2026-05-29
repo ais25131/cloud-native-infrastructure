@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-setup
+  namespace: rabbitmq
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: rabbitmq:3.13-management
+          command:
+            - /bin/sh
+            - -c
+            - |
+              rabbitmqadmin --host=rabbitmq.rabbitmq.svc.cluster.local --port=15672 --username=user --password=password declare queue name=orders durable=false
+              rabbitmqadmin --host=rabbitmq.rabbitmq.svc.cluster.local --port=15672 --username=user --password=password declare queue name=events durable=false
+              rabbitmqadmin --host=rabbitmq.rabbitmq.svc.cluster.local --port=15672 --username=user --password=password declare binding source=amq.topic destination_type=queue destination=events routing_key=system.minio
