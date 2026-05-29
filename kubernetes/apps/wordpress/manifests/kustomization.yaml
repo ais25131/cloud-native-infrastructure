@@ -14,7 +14,7 @@ configMapGenerator:
   - name: tb-events-plugin
     namespace: wordpress
     files:
-      - tb-events.php=../plugin/tb-events.php
+      - tb-events.php=plugin/tb-events.php
 
 generatorOptions:
   disableNameSuffixHash: true
