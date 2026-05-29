@@ -28,9 +28,7 @@ spec:
                 durable="off" \
                 no_wait="off"
 
-              mc admin service restart local
-
-              sleep 15
+              sleep 10
 
               mc event add local/orders arn:minio:sqs::1:amqp --event put,delete
               mc event list local/orders
