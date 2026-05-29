@@ -4,14 +4,6 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - pvc.yaml
+  - flows-configmap.yaml
   - deployment.yaml
   - ingress.yaml
-
-configMapGenerator:
-  - name: node-red-flows
-    namespace: node-red
-    files:
-      - flows.json=../../../integrations/node-red/flows-new/json
-
-generatorOptions:
-  disableNameSuffixHash: true
