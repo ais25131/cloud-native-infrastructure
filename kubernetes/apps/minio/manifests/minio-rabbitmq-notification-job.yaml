@@ -25,7 +25,7 @@ spec:
                 exchange_type="topic" \
                 routing_key="system.minio" \
                 mandatory="off" \
-                durable="off" \
+                durable="on" \
                 no_wait="off"
 
               sleep 10
