@@ -9,3 +9,12 @@ resources:
   - wordpress-pvc.yaml
   - deployment.yaml
   - ingress.yaml
+
+configMapGenerator:
+  - name: tb-events-plugin
+    namespace: wordpress
+    files:
+      - tb-events.php=../plugin/tb-events.php
+
+generatorOptions:
+  disableNameSuffixHash: true

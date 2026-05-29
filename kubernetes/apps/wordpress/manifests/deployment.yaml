@@ -39,6 +39,9 @@ spec:
           volumeMounts:
             - name: wordpress-storage
               mountPath: /var/www/html
+            - name: tb-events-plugin
+              mountPath: /var/www/html/wp-content/plugins/tb-events/tb-events.php
+              subPath: tb-events.php
           resources:
             requests:
               memory: "256Mi"
@@ -50,6 +53,9 @@ spec:
         - name: wordpress-storage
           persistentVolumeClaim:
             claimName: wordpress-pvc
+        - name: tb-events-plugin
+          configMap:
+            name: tb-events-plugin    
 ---
 apiVersion: v1
 kind: Service

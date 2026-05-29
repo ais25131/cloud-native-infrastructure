@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tb-events-plugin
+  namespace: wordpress
+data:
+  tb-events.php: |
+    <?php
+    /*
+    Plugin Name: TB Events
+    Description: Sends WordPress/WooCommerce events to Node-RED.
+    Version: 1.0
+    */
+
+    define('TB_NODE_RED_URL', 'http://node-red.node-red.svc.cluster.local:1880/wp-event');
+    define('TB_EVENT_SECRET', 'supersecret123');
+
+    function tb_send($event) {
+        if (empty($event['event_type'])) return;
+
+        $resp = wp_remote_post(TB_NODE_RED_URL, [
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'x-event-secret' => TB_EVENT_SECRET
+            ],
+            'body' => wp_json_encode($event),
+            'timeout' => 5
+        ]);
+
+        if (is_wp_error($resp)) {
+            error_log('[TB Events] wp_remote_post error: ' . $resp->get_error_message());
+        }
+    }
