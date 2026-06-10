@@ -13,15 +13,14 @@ spec:
       labels:
         app: node-red
       annotations:
-        vault.hashicorp.com/agent-inject: "true"
-        vault.hashicorp.com/role: "node-red-role"
-        vault.hashicorp.com/agent-inject-secret-node-red.env: "secret/data/node-red"
-        vault.hashicorp.com/agent-inject-template-node-red.env: |
-          {{- with secret "secret/data/node-red" -}}
-          export RABBITMQ_USER="{{ .Data.data.rabbitmq_user }}"
-          export RABBITMQ_PASSWORD="{{ .Data.data.rabbitmq_password }}"
-          export THINGSBOARD_TOKEN="{{ .Data.data.thingsboard_token }}"
-          {{- end }}
+          vault.hashicorp.com/agent-inject-template-node-red.env: |
+           {{- with secret "secret/data/node-red" -}}
+           export RABBITMQ_HOST="{{ .Data.data.rabbitmq_host }}"
+           export RABBITMQ_USER="{{ .Data.data.rabbitmq_user }}"
+           export RABBITMQ_PASSWORD="{{ .Data.data.rabbitmq_password }}"
+           export MINIO_ENDPOINT="{{ .Data.data.minio_endpoint }}"
+           export THINGSBOARD_TOKEN="{{ .Data.data.thingsboard_token }}"
+           {{- end }}
     spec:
       serviceAccountName: node-red
       initContainers:
