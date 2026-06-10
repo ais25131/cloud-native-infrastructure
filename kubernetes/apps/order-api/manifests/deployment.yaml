@@ -17,7 +17,23 @@ spec:
       labels:
         app: order-api
 
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "vault-role"
+        vault.hashicorp.com/agent-inject-secret-rabbitmq: "secret/data/rabbitmq"
+        vault.hashicorp.com/agent-inject-template-rabbitmq: |
+          {{- with secret "secret/data/rabbitmq" -}}
+          RABBITMQ_HOST={{ .Data.data.host }}
+          RABBITMQ_USER={{ .Data.data.username }}
+          RABBITMQ_PASSWORD={{ .Data.data.password }}
+          RABBITMQ_PORT={{ .Data.data.port }}
+          RABBITMQ_QUEUE={{ .Data.data.queue }}
+          {{- end }}
+
     spec:
+      serviceAccountName: vault-serviceaccount
+
       containers:
         - name: order-api
 
@@ -30,15 +46,6 @@ spec:
           env:
             - name: APP_VERSION
               value: "v2"
-
-            - name: RABBITMQ_HOST
-              value: "rabbitmq.rabbitmq.svc.cluster.local"
-
-            - name: RABBITMQ_USER
-              value: "user"
-
-            - name: RABBITMQ_PASSWORD
-              value: "password"
 
           resources:
             requests:
