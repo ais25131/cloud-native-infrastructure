@@ -11,8 +11,8 @@ pipeline {
         stage('Build order-api image') {
             steps {
                 dir('kubernetes/apps/order-api') {
-                    sh 'docker build -t order-api:v1 .'
-                    sh 'docker save order-api:v1 -o order-api.tar'
+                    sh 'docker build -t order-api:v3 .'
+                    sh 'docker save order-api:v3 -o order-api.tar'
                 }
             }
         }
