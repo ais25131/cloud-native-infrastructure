@@ -12,26 +12,42 @@ spec:
     metadata:
       labels:
         app: rabbitmq
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "rabbitmq-role"
+        vault.hashicorp.com/agent-inject-secret-rabbitmq.env: "secret/data/rabbitmq"
+        vault.hashicorp.com/agent-requests-cpu: "25m"
+        vault.hashicorp.com/agent-limits-cpu: "100m"
+        vault.hashicorp.com/agent-requests-mem: "32Mi"
+        vault.hashicorp.com/agent-limits-mem: "128Mi"
+        vault.hashicorp.com/agent-inject-template-rabbitmq.env: |
+          {{- with secret "secret/data/rabbitmq" -}}
+          export RABBITMQ_DEFAULT_USER="{{ .Data.data.rabbitmq_user }}"
+          export RABBITMQ_DEFAULT_PASS="{{ .Data.data.rabbitmq_password }}"
+          {{- end }}
     spec:
+      serviceAccountName: rabbitmq
       containers:
         - name: rabbitmq
           image: rabbitmq:3-management
+          command:
+            - sh
+            - -c
+          args:
+            - . /vault/secrets/rabbitmq.env && docker-entrypoint.sh rabbitmq-server
           ports:
             - containerPort: 5672
             - containerPort: 15672
-          envFrom:
-            - secretRef:
-                name: rabbitmq-secret
           volumeMounts:
             - name: rabbitmq-storage
               mountPath: /var/lib/rabbitmq
           resources:
             requests:
               memory: "256Mi"
-              cpu: "250m"
+              cpu: "100m"
             limits:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "300m"
       volumes:
         - name: rabbitmq-storage
           persistentVolumeClaim:
