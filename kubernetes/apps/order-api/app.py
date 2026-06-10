@@ -7,6 +7,24 @@ import json
 
 from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
+
+def load_vault_env_file(path="/vault/secrets/rabbitmq"):
+    if not os.path.exists(path):
+        return
+
+    with open(path, "r") as file:
+        for line in file:
+            line = line.strip()
+
+            if not line or "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            os.environ[key] = value
+
+
+load_vault_env_file()
+
 app = Flask(__name__)
 
 orders = []
@@ -15,6 +33,7 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.rabbitmq.svc.cluster.local"
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "user")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "password")
 RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "orders")
+RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 
 ORDERS_CREATED_TOTAL = Counter(
     "orders_created_total",
@@ -41,6 +60,7 @@ def publish_order(order):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(
             host=RABBITMQ_HOST,
+            port=RABBITMQ_PORT,
             credentials=credentials
         )
     )
@@ -68,7 +88,7 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "v2")
+        "version": os.getenv("APP_VERSION", "v3")
     })
 
 
