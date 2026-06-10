@@ -17,20 +17,34 @@ spec:
       labels:
         app: grafana
 
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "vault-role"
+
+        vault.hashicorp.com/agent-inject-secret-grafana: "secret/data/grafana"
+        vault.hashicorp.com/agent-inject-template-grafana: |
+          {{- with secret "secret/data/grafana" -}}
+          export GF_SECURITY_ADMIN_USER={{ .Data.data.admin_user }}
+          export GF_SECURITY_ADMIN_PASSWORD={{ .Data.data.admin_password }}
+          {{- end }}
+
     spec:
+      serviceAccountName: vault-serviceaccount
+
       containers:
         - name: grafana
           image: grafana/grafana:latest
 
+          command:
+            - /bin/sh
+            - -c
+            - |
+              . /vault/secrets/grafana
+              /run.sh
+
           ports:
             - containerPort: 3000
-
-          env:
-            - name: GF_SECURITY_ADMIN_USER
-              value: admin
-
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              value: admin
 
           resources:
             requests:
