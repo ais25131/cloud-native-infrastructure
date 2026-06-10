@@ -12,30 +12,33 @@ spec:
     metadata:
       labels:
         app: wordpress
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "wordpress-role"
+        vault.hashicorp.com/agent-inject-secret-wordpress-db.env: "secret/data/wordpress-db"
+        vault.hashicorp.com/agent-requests-cpu: "25m"
+        vault.hashicorp.com/agent-limits-cpu: "100m"
+        vault.hashicorp.com/agent-requests-mem: "32Mi"
+        vault.hashicorp.com/agent-limits-mem: "128Mi"
+        vault.hashicorp.com/agent-inject-template-wordpress-db.env: |
+          {{- with secret "secret/data/wordpress-db" -}}
+          export WORDPRESS_DB_HOST="{{ .Data.data.host }}"
+          export WORDPRESS_DB_NAME="{{ .Data.data.mysql_database }}"
+          export WORDPRESS_DB_USER="{{ .Data.data.mysql_user }}"
+          export WORDPRESS_DB_PASSWORD="{{ .Data.data.mysql_password }}"
+          {{- end }}
     spec:
+      serviceAccountName: wordpress
       containers:
         - name: wordpress
           image: wordpress:6.6-apache
+          command:
+            - sh
+            - -c
+          args:
+            - . /vault/secrets/wordpress-db.env && docker-entrypoint.sh apache2-foreground
           ports:
             - containerPort: 80
-          env:
-            - name: WORDPRESS_DB_HOST
-              value: wordpress-mariadb:3306
-            - name: WORDPRESS_DB_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: wordpress-mariadb-secret
-                  key: MYSQL_DATABASE
-            - name: WORDPRESS_DB_USER
-              valueFrom:
-                secretKeyRef:
-                  name: wordpress-mariadb-secret
-                  key: MYSQL_USER
-            - name: WORDPRESS_DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: wordpress-mariadb-secret
-                  key: MYSQL_PASSWORD
           volumeMounts:
             - name: wordpress-storage
               mountPath: /var/www/html
@@ -45,17 +48,18 @@ spec:
           resources:
             requests:
               memory: "256Mi"
-              cpu: "250m"
+              cpu: "100m"
             limits:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "300m"
       volumes:
         - name: wordpress-storage
           persistentVolumeClaim:
             claimName: wordpress-pvc
         - name: tb-events-plugin
           configMap:
-            name: tb-events-plugin    
+            name: tb-events-plugin
+
 ---
 apiVersion: v1
 kind: Service

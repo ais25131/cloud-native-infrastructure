@@ -3,12 +3,13 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - mariadb-secret.yaml
   - mariadb-pvc.yaml
   - mariadb.yaml
   - wordpress-pvc.yaml
   - deployment.yaml
   - ingress.yaml
+  - serviceaccount-wordpress.yaml
+  - serviceaccount-mariadb.yaml
 
 configMapGenerator:
   - name: tb-events-plugin
