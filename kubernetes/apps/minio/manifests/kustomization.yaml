@@ -1,9 +1,9 @@
 resources:
   - namespace.yaml
-  - secret.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml
   - ingress.yaml
   - console-ingress.yaml
   - minio-rabbitmq-notification-job.yaml
+  - serviceaccount.yaml
