@@ -7,3 +7,4 @@ resources:
   - flows-configmap.yaml
   - deployment.yaml
   - ingress.yaml
+  - serviceaccount.yaml
