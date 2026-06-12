@@ -6,25 +6,30 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+
 spec:
   template:
     metadata:
       annotations:
         vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-pre-populate-only: "true"
         vault.hashicorp.com/role: "vault-role"
         vault.hashicorp.com/agent-inject-secret-minio: "secret/data/minio"
         vault.hashicorp.com/agent-inject-template-minio: |
           {{- with secret "secret/data/minio" -}}
-          export MINIO_ROOT_USER={{ .Data.data.username }}
-          export MINIO_ROOT_PASSWORD={{ .Data.data.password }}
+          export MINIO_ROOT_USER={{ .Data.data.minio_root_user }}
+          export MINIO_ROOT_PASSWORD={{ .Data.data.minio_root_password }}
           {{- end }}
+
     spec:
       serviceAccountName: vault-serviceaccount
       restartPolicy: OnFailure
+
       containers:
         - name: setup
           image: minio/mc:RELEASE.2025-04-16T18-13-26Z
           imagePullPolicy: IfNotPresent
+
           command:
             - /bin/sh
             - -c
@@ -47,5 +52,7 @@ spec:
               sleep 10
 
               mc event remove local/orders arn:minio:sqs::1:amqp --event put,delete || true
+
               mc event add local/orders arn:minio:sqs::1:amqp --event put,delete
+
               mc event list local/orders
