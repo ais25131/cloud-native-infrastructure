@@ -7,3 +7,4 @@ resources:
   - console-ingress.yaml
   - minio-rabbitmq-notification-job.yaml
   - serviceaccount.yaml
+  - vault-serviceaccount.yaml
