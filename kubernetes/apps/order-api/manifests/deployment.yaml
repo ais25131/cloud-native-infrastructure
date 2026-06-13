@@ -37,15 +37,15 @@ spec:
       containers:
         - name: order-api
 
-          image: docker.io/library/order-api:v3
-          imagePullPolicy: Never
+          image: docker.io/ais25131/order-api:1
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 5000
 
           env:
             - name: APP_VERSION
-              value: "v3"
+              value: "1"
 
           resources:
             requests:

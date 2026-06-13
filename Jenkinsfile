@@ -1,6 +1,15 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = "docker.io/ais25131/order-api"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -8,52 +17,62 @@ pipeline {
             }
         }
 
-        stage('Build order-api image') {
+        stage('Build Docker image') {
             steps {
                 dir('kubernetes/apps/order-api') {
-                    sh 'docker build -t order-api:v3 .'
-                    sh 'docker save order-api:v3 -o order-api.tar'
-                }
-            }
-        }
-
-        stage('Deploy order-api with Ansible') {
-            steps {
-                dir('ansible') {
                     sh '''
-                        set -e
-
-                        eval "$(ssh-agent -s)"
-
-                        export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
-                        export DISPLAY=:0
-
-                        setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
-
-                        ansible-playbook -i inventory.ini deploy-order-api.yml
-
-                        ssh-agent -k
+                        docker build \
+                          -t $DOCKER_IMAGE:$IMAGE_TAG \
+                          .
                     '''
                 }
             }
         }
 
-        stage('Check Kubernetes status') {
+        stage('Push Docker image') {
             steps {
-                dir('ansible') {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
                     sh '''
-                        set -e
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $DOCKER_IMAGE:$IMAGE_TAG
+                        docker logout
+                    '''
+                }
+            }
+        }
 
-                        eval "$(ssh-agent -s)"
+        stage('Update manifest image') {
+            steps {
+                sh '''
+                    sed -i "s|image: docker.io/ais25131/order-api:.*|image: $DOCKER_IMAGE:$IMAGE_TAG|" kubernetes/apps/order-api/manifests/deployment.yaml
+                    sed -i "s|value: \\".*\\"|value: \\"$IMAGE_TAG\\"|" kubernetes/apps/order-api/manifests/deployment.yaml
+                '''
+            }
+        }
 
-                        export SSH_ASKPASS=/var/lib/jenkins/.ssh/askpass.sh
-                        export DISPLAY=:0
+        stage('Commit and push manifest') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh '''
+                        git config user.name "jenkins"
+                        git config user.email "jenkins@local"
 
-                        setsid ssh-add /var/lib/jenkins/.ssh/ansible_key
+                        git add kubernetes/apps/order-api/manifests/deployment.yaml
 
-                        ansible kubernetes -i inventory.ini -m shell -a "microk8s kubectl get pods -A"
-
-                        ssh-agent -k
+                        if git diff --cached --quiet; then
+                            echo "No changes to commit."
+                        else
+                            git commit -m "Update order-api image to $IMAGE_TAG"
+                            git push https://$GIT_USER:$GIT_TOKEN@github.com/ais25131/cloud-native-infrastructure.git HEAD:main
+                        fi
                     '''
                 }
             }
@@ -62,11 +81,11 @@ pipeline {
 
     post {
         success {
-            echo 'Jenkins pipeline completed successfully.'
+            echo 'CI pipeline completed successfully.'
         }
 
         failure {
-            echo 'Jenkins pipeline failed.'
+            echo 'CI pipeline failed.'
         }
     }
 }
