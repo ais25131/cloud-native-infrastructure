@@ -26,17 +26,21 @@ spec:
           export RABBITMQ_USER="{{ .Data.data.rabbitmq_user }}"
           export RABBITMQ_PASSWORD="{{ .Data.data.rabbitmq_password }}"
           export MINIO_ENDPOINT="{{ .Data.data.minio_endpoint }}"
+          export MINIO_ACCESS_KEY="{{ .Data.data.minio_access_key }}"
+          export MINIO_SECRET_KEY="{{ .Data.data.minio_secret_key }}"
           export THINGSBOARD_TOKEN="{{ .Data.data.thingsboard_token }}"
           {{- end }}
     spec:
       serviceAccountName: node-red
+
       initContainers:
         - name: import-node-red-flows
           image: busybox:1.36
           command:
             - sh
             - -c
-            - cp /import/flows.json /data/flows.json
+            - |
+              cp /import/flows.json /data/flows.json
           volumeMounts:
             - name: node-red-flows-import
               mountPath: /import
@@ -50,7 +54,9 @@ spec:
             - sh
             - -c
           args:
-            - . /vault/secrets/node-red.env && npm start -- --userDir /data
+            - |
+              . /vault/secrets/node-red.env
+              npm start -- --userDir /data
           ports:
             - containerPort: 1880
           volumeMounts:
@@ -71,16 +77,3 @@ spec:
         - name: node-red-flows-import
           configMap:
             name: node-red-flows
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: node-red
-  namespace: node-red
-spec:
-  selector:
-    app: node-red
-  ports:
-    - port: 1880
-      targetPort: 1880
