@@ -9,6 +9,7 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
+        serving.knative.dev/rollout: "vault-flow-v2"
 
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "node-red-role"
