@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: node-red-knative-ingress
-  namespace: node-red
+  name: node-red-local-to-kourier
+  namespace: kourier-system
 spec:
   ingressClassName: traefik
   rules:
@@ -13,6 +13,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: node-red-knative-00001
+                name: kourier
                 port:
                   number: 80
