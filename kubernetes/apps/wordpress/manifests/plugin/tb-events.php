@@ -5,7 +5,7 @@ Description: Sends WordPress/WooCommerce events to Node-RED.
 Version: 1.0
 */
 
-define('TB_NODE_RED_URL', 'http://node-red.node-red.svc.cluster.local:1880/wp-event');
+define('TB_NODE_RED_URL', 'http://node-red-knative.node-red.svc.cluster.local/wp-event');
 define('TB_EVENT_SECRET', 'supersecret123');
 
 function tb_send($event) {
