@@ -10,7 +10,7 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
-        serving.knative.dev/rollout: "vault-credentials-v3"
+        serving.knative.dev/rollout: "vault-credentials-v4"
 
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "node-red-role"
@@ -50,7 +50,13 @@ spec:
                 '  },' \
                 '  "7bfec4c89afd5431": {' \
                 "    \"user\": \"$RABBITMQ_USER\"," \
+                "    \"username\": \"$RABBITMQ_USER\"," \
                 "    \"password\": \"$RABBITMQ_PASSWORD\"" \
+                '  },' \
+                '  "eea479fe5b198964": {' \
+                "    \"user\": \"$THINGSBOARD_TOKEN\"," \
+                "    \"username\": \"$THINGSBOARD_TOKEN\"," \
+                '    "password": ""' \
                 '  }' \
                 '}' > /tmp/node-red-data/flows_cred.json
 
