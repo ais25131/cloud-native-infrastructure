@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: node-red-ingress
+  name: node-red-knative-ingress
   namespace: node-red
 spec:
   ingressClassName: traefik
@@ -13,6 +13,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: node-red
+                name: node-red-knative
                 port:
-                  number: 1880
+                  number: 80
