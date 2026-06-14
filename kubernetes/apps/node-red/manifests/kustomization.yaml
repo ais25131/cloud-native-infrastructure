@@ -5,7 +5,5 @@ resources:
   - namespace.yaml
   - pvc.yaml
   - flows-configmap.yaml
-  - deployment.yaml
-  - ingress.yaml
   - serviceaccount.yaml
-  - service.yaml
+  - ksvc.yaml

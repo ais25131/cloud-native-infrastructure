@@ -1,0 +1,76 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: node-red-knative
+  namespace: node-red
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "3"
+
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "node-red-role"
+        vault.hashicorp.com/agent-inject-secret-node-red.env: "secret/data/node-red"
+        vault.hashicorp.com/agent-requests-cpu: "25m"
+        vault.hashicorp.com/agent-limits-cpu: "100m"
+        vault.hashicorp.com/agent-requests-mem: "32Mi"
+        vault.hashicorp.com/agent-limits-mem: "128Mi"
+        vault.hashicorp.com/agent-inject-template-node-red.env: |
+          {{- with secret "secret/data/node-red" -}}
+          export RABBITMQ_HOST="{{ .Data.data.rabbitmq_host }}"
+          export RABBITMQ_USER="{{ .Data.data.rabbitmq_user }}"
+          export RABBITMQ_PASSWORD="{{ .Data.data.rabbitmq_password }}"
+          export MINIO_ENDPOINT="{{ .Data.data.minio_endpoint }}"
+          export MINIO_ACCESS_KEY="{{ .Data.data.minio_access_key }}"
+          export MINIO_SECRET_KEY="{{ .Data.data.minio_secret_key }}"
+          export THINGSBOARD_TOKEN="{{ .Data.data.thingsboard_token }}"
+          {{- end }}
+    spec:
+      serviceAccountName: node-red
+
+      initContainers:
+        - name: import-node-red-flows
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              cp /import/flows.json /data/flows.json
+          volumeMounts:
+            - name: node-red-flows-import
+              mountPath: /import
+            - name: node-red-storage
+              mountPath: /data
+
+      containers:
+        - name: node-red
+          image: nodered/node-red:latest
+          command:
+            - sh
+            - -c
+          args:
+            - |
+              . /vault/secrets/node-red.env
+              npm start -- --userDir /data
+          ports:
+            - containerPort: 1880
+          volumeMounts:
+            - name: node-red-storage
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "300m"
+
+      volumes:
+        - name: node-red-storage
+          persistentVolumeClaim:
+            claimName: node-red-pvc
+        - name: node-red-flows-import
+          configMap:
+            name: node-red-flows
