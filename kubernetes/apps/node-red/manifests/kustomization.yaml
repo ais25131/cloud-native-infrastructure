@@ -7,4 +7,3 @@ resources:
   - serviceaccount.yaml
   - ksvc.yaml
   - ingress.yaml
-  - domainmapping.yaml
