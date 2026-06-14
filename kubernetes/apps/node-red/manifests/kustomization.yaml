@@ -6,4 +6,5 @@ resources:
   - flows-configmap.yaml
   - serviceaccount.yaml
   - ksvc.yaml
+  - service-local.yaml
   - ingress.yaml
