@@ -37,7 +37,7 @@ spec:
       containers:
         - name: order-api
 
-          image: docker.io/ais25131/order-api:28
+          image: docker.io/ais25131/order-api:29
           imagePullPolicy: Always
 
           ports:
@@ -45,7 +45,7 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "28"
+              value: "29"
 
           resources:
             requests:
