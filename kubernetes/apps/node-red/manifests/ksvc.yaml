@@ -13,10 +13,6 @@ spec:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "node-red-role"
         vault.hashicorp.com/agent-inject-secret-node-red.env: "secret/data/node-red"
-        vault.hashicorp.com/agent-requests-cpu: "25m"
-        vault.hashicorp.com/agent-limits-cpu: "100m"
-        vault.hashicorp.com/agent-requests-mem: "32Mi"
-        vault.hashicorp.com/agent-limits-mem: "128Mi"
         vault.hashicorp.com/agent-inject-template-node-red.env: |
           {{- with secret "secret/data/node-red" -}}
           export RABBITMQ_HOST="{{ .Data.data.rabbitmq_host }}"
@@ -29,21 +25,6 @@ spec:
           {{- end }}
     spec:
       serviceAccountName: node-red
-
-      initContainers:
-        - name: import-node-red-flows
-          image: busybox:1.36
-          command:
-            - sh
-            - -c
-            - |
-              cp /import/flows.json /data/flows.json
-          volumeMounts:
-            - name: node-red-flows-import
-              mountPath: /import
-            - name: node-red-storage
-              mountPath: /data
-
       containers:
         - name: node-red
           image: nodered/node-red:latest
@@ -53,12 +34,14 @@ spec:
           args:
             - |
               . /vault/secrets/node-red.env
-              npm start -- --userDir /data
+              mkdir -p /tmp/node-red-data
+              cp /config/flows.json /tmp/node-red-data/flows.json
+              npm start -- --userDir /tmp/node-red-data
           ports:
             - containerPort: 1880
           volumeMounts:
-            - name: node-red-storage
-              mountPath: /data
+            - name: node-red-flows-import
+              mountPath: /config
           resources:
             requests:
               memory: "128Mi"
@@ -66,11 +49,7 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "300m"
-
       volumes:
-        - name: node-red-storage
-          persistentVolumeClaim:
-            claimName: node-red-pvc
         - name: node-red-flows-import
           configMap:
             name: node-red-flows
