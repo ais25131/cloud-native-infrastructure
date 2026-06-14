@@ -13,6 +13,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: node-red-knative
+                name: node-red-knative-00001
                 port:
                   number: 80
