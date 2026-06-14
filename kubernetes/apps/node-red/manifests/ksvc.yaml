@@ -3,13 +3,15 @@ kind: Service
 metadata:
   name: node-red-knative
   namespace: node-red
+
 spec:
   template:
     metadata:
       annotations:
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
-        serving.knative.dev/rollout: "vault-flow-v2"
+
+        serving.knative.dev/rollout: "vault-credentials-v2"
 
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "node-red-role"
@@ -24,25 +26,48 @@ spec:
           export MINIO_SECRET_KEY="{{ .Data.data.minio_secret_key }}"
           export THINGSBOARD_TOKEN="{{ .Data.data.thingsboard_token }}"
           {{- end }}
+
     spec:
       serviceAccountName: node-red
+
       containers:
         - name: node-red
           image: ais25131/node-red-knative:v5
+
           command:
             - sh
             - -c
+
           args:
             - |
               . /vault/secrets/node-red.env
+
               mkdir -p /tmp/node-red-data
+
               cp /config/flows.json /tmp/node-red-data/flows.json
+
+              cat > /tmp/node-red-data/flows_cred.json <<EOF
+              {
+                "d329961bc35eeaf9": {
+                  "accesskeyid": "$MINIO_ACCESS_KEY",
+                  "secretaccesskey": "$MINIO_SECRET_KEY"
+                },
+                "7bfec4c89afd5431": {
+                  "user": "$RABBITMQ_USER",
+                  "password": "$RABBITMQ_PASSWORD"
+                }
+              }
+              EOF
+
               npm start -- --userDir /tmp/node-red-data
+
           ports:
             - containerPort: 1880
+
           volumeMounts:
             - name: node-red-flows-import
               mountPath: /config
+
           resources:
             requests:
               memory: "128Mi"
@@ -50,6 +75,7 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "300m"
+
       volumes:
         - name: node-red-flows-import
           configMap:

@@ -8,3 +8,9 @@ resources:
   - ksvc.yaml
   - service-local.yaml
   - ingress.yaml
+ 
+configMapGenerator:
+  - name: node-red-start-script
+    namespace: node-red
+    files:
+      - start-node-red.sh
