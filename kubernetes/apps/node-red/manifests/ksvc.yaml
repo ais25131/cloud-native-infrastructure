@@ -10,8 +10,7 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
-
-        serving.knative.dev/rollout: "vault-credentials-v2"
+        serving.knative.dev/rollout: "vault-credentials-v4"
 
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "node-red-role"
@@ -33,31 +32,29 @@ spec:
       containers:
         - name: node-red
           image: ais25131/node-red-knative:v5
-
           command:
             - sh
             - -c
-
           args:
             - |
               . /vault/secrets/node-red.env
 
               mkdir -p /tmp/node-red-data
-
               cp /config/flows.json /tmp/node-red-data/flows.json
 
-              cat > /tmp/node-red-data/flows_cred.json <<EOF
-              {
-                "d329961bc35eeaf9": {
-                  "accesskeyid": "$MINIO_ACCESS_KEY",
-                  "secretaccesskey": "$MINIO_SECRET_KEY"
-                },
-                "7bfec4c89afd5431": {
-                  "user": "$RABBITMQ_USER",
-                  "password": "$RABBITMQ_PASSWORD"
-                }
-              }
-              EOF
+              printf '%s\n' \
+                '{' \
+                '  "d329961bc35eeaf9": {' \
+                "    \"accesskeyid\": \"$MINIO_ACCESS_KEY\"," \
+                "    \"secretaccesskey\": \"$MINIO_SECRET_KEY\"" \
+                '  },' \
+                '  "7bfec4c89afd5431": {' \
+                "    \"user\": \"$RABBITMQ_USER\"," \
+                "    \"password\": \"$RABBITMQ_PASSWORD\"" \
+                '  }' \
+                '}' > /tmp/node-red-data/flows_cred.json
+
+              ls -l /tmp/node-red-data/flows_cred.json
 
               npm start -- --userDir /tmp/node-red-data
 
