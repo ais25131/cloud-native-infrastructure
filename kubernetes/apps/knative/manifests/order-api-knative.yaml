@@ -1,0 +1,48 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+
+metadata:
+  name: order-api-knative
+  namespace: order-api
+
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "3"
+
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "vault-role"
+        vault.hashicorp.com/agent-inject-secret-rabbitmq: "secret/data/rabbitmq"
+        vault.hashicorp.com/agent-inject-template-rabbitmq: |
+          {{- with secret "secret/data/rabbitmq" -}}
+          RABBITMQ_HOST={{ .Data.data.host }}
+          RABBITMQ_USER={{ .Data.data.username }}
+          RABBITMQ_PASSWORD={{ .Data.data.password }}
+          RABBITMQ_PORT={{ .Data.data.port }}
+          RABBITMQ_QUEUE={{ .Data.data.queue }}
+          {{- end }}
+
+    spec:
+      serviceAccountName: vault-serviceaccount
+
+      containers:
+        - image: docker.io/ais25131/order-api:20
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 5000
+
+          env:
+            - name: APP_VERSION
+              value: "20"
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

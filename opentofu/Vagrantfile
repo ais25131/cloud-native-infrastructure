@@ -27,7 +27,7 @@ Vagrant.configure("2") do |config|
     vm.vm.provider "virtualbox" do |vb|
       vb.name   = "k8s"
       vb.memory = 8192
-      vb.cpus   = 4
+      vb.cpus   = 6
     end
 
   end

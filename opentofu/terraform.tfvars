@@ -4,7 +4,7 @@ vms = {
     ip     = "192.168.56.21"
     role   = "kubernetes"
     memory = 8192
-    cpus   = 4
+    cpus   = 6
   }
 
   jenkins = {

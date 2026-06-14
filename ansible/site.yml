@@ -24,3 +24,10 @@
   become: true
   roles:
     - argocd    
+
+- name: Install Knative
+  hosts: kubernetes
+  become: true
+
+  roles:
+    - knative    

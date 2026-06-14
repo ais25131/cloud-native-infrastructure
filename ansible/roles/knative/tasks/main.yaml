@@ -1,0 +1,58 @@
+---
+- name: Install Knative Serving CRDs
+  command: microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.21.2/serving-crds.yaml
+  changed_when: false
+
+- name: Install Knative Serving Core
+  command: microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.21.2/serving-core.yaml
+  changed_when: false
+
+- name: Install Kourier networking
+  command: microk8s kubectl apply -f https://github.com/knative-extensions/net-kourier/releases/download/knative-v1.21.0/kourier.yaml
+  changed_when: false
+
+- name: Configure Knative to use Kourier
+  command: >
+    microk8s kubectl patch configmap config-network
+    -n knative-serving
+    --type merge
+    -p '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
+  changed_when: false
+
+- name: Install Knative default domain
+  command: microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.21.2/serving-default-domain.yaml
+  changed_when: false
+
+- name: Install Knative HPA support
+  command: microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.21.2/serving-hpa.yaml
+  changed_when: false
+
+- name: Install Knative Eventing CRDs
+  command: microk8s kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.21.2/eventing-crds.yaml
+  changed_when: false
+
+- name: Install Knative Eventing Core
+  command: microk8s kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.21.2/eventing-core.yaml
+  changed_when: false
+
+- name: Install Knative InMemoryChannel
+  command: microk8s kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.21.2/in-memory-channel.yaml
+  changed_when: false
+
+- name: Check Knative Serving pods
+  command: microk8s kubectl get pods -n knative-serving
+  register: knative_serving
+  changed_when: false
+
+- name: Show Knative Serving pods
+  debug:
+    var: knative_serving.stdout_lines
+
+- name: Check Knative Eventing pods
+  command: microk8s kubectl get pods -n knative-eventing
+  register: knative_eventing
+  changed_when: false
+
+- name: Show Knative Eventing pods
+  debug:
+    var: knative_eventing.stdout_lines
