@@ -1,3 +1,3 @@
 FROM nodered/node-red:latest
 
-RUN npm install node-red-contrib-amqp node-red-contrib-minio-all-fix
+RUN npm install @breshinas/node-red-contrib-amqp node-red-node-aws

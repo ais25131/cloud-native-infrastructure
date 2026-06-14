@@ -27,7 +27,7 @@ spec:
       serviceAccountName: node-red
       containers:
         - name: node-red
-          image: ais25131/node-red-knative:latest
+          image: ais25131/node-red-knative:v4
           command:
             - sh
             - -c
