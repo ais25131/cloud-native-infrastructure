@@ -37,7 +37,7 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "21-retry"
+              value: "21-retry-fix"
 
           resources:
             requests:
