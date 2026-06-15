@@ -31,6 +31,14 @@ app = Flask(__name__)
 orders = []
 idempotency_store = {}
 
+circuit_breaker = {
+    "state": "closed",
+    "failure_count": 0,
+    "failure_threshold": 3,
+    "opened_at": None,
+    "recovery_timeout": 30
+}
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.rabbitmq.svc.cluster.local")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "user")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "password")
@@ -63,7 +71,45 @@ RABBITMQ_PUBLISH_FAILED_TOTAL = Counter(
 )
 
 
+def is_circuit_open():
+    if circuit_breaker["state"] != "open":
+        return False
+
+    elapsed = time.time() - circuit_breaker["opened_at"]
+
+    if elapsed >= circuit_breaker["recovery_timeout"]:
+        circuit_breaker["state"] = "half-open"
+        print("Circuit breaker moved to HALF-OPEN", flush=True)
+        return False
+
+    return True
+
+
+def record_publish_success():
+    circuit_breaker["state"] = "closed"
+    circuit_breaker["failure_count"] = 0
+    circuit_breaker["opened_at"] = None
+    print("Circuit breaker CLOSED", flush=True)
+
+
+def record_publish_failure():
+    circuit_breaker["failure_count"] += 1
+
+    if circuit_breaker["failure_count"] >= circuit_breaker["failure_threshold"]:
+        circuit_breaker["state"] = "open"
+        circuit_breaker["opened_at"] = time.time()
+        print("Circuit breaker OPEN", flush=True)
+
+
 def publish_order(order, max_retries=5, retry_delay=3):
+    if is_circuit_open():
+        print(
+            "Circuit breaker is OPEN. "
+            "Skipping RabbitMQ publish.",
+            flush=True
+        )
+        return False
+
     last_error = None
 
     for attempt in range(1, max_retries + 1):
@@ -102,6 +148,7 @@ def publish_order(order, max_retries=5, retry_delay=3):
             connection.close()
 
             RABBITMQ_PUBLISH_TOTAL.inc()
+            record_publish_success()
 
             print(
                 f"RabbitMQ publish successful "
@@ -127,6 +174,7 @@ def publish_order(order, max_retries=5, retry_delay=3):
                 time.sleep(retry_delay)
 
     RABBITMQ_PUBLISH_FAILED_TOTAL.inc()
+    record_publish_failure()
 
     print(
         f"RabbitMQ publish permanently failed "
@@ -144,7 +192,8 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "22-idempotency")
+        "version": os.getenv("APP_VERSION", "23-circuit-breaker"),
+        "circuit_breaker": circuit_breaker
     })
 
 
@@ -164,7 +213,8 @@ def metrics():
 def get_orders():
     return jsonify({
         "orders": orders,
-        "count": len(orders)
+        "count": len(orders),
+        "circuit_breaker": circuit_breaker
     })
 
 
@@ -175,7 +225,8 @@ def create_order():
     if idempotency_key and idempotency_key in idempotency_store:
         return jsonify({
             "message": "Duplicate request ignored",
-            "order": idempotency_store[idempotency_key]
+            "order": idempotency_store[idempotency_key],
+            "circuit_breaker": circuit_breaker
         }), 200
 
     data = request.get_json() or {}
@@ -203,12 +254,14 @@ def create_order():
     if not published:
         return jsonify({
             "message": "Order created locally but RabbitMQ publish failed",
-            "order": order
+            "order": order,
+            "circuit_breaker": circuit_breaker
         }), 503
 
     return jsonify({
         "message": "Order created",
-        "order": order
+        "order": order,
+        "circuit_breaker": circuit_breaker
     }), 201
 
 
@@ -225,7 +278,8 @@ def woocommerce_order_webhook():
     if idempotency_key and idempotency_key in idempotency_store:
         return jsonify({
             "message": "Duplicate WooCommerce order ignored",
-            "order": idempotency_store[idempotency_key]
+            "order": idempotency_store[idempotency_key],
+            "circuit_breaker": circuit_breaker
         }), 200
 
     line_items = data.get("line_items", [])
@@ -270,12 +324,14 @@ def woocommerce_order_webhook():
     if not published:
         return jsonify({
             "message": "WooCommerce order received locally but RabbitMQ publish failed",
-            "order": order
+            "order": order,
+            "circuit_breaker": circuit_breaker
         }), 503
 
     return jsonify({
         "message": "WooCommerce order received",
-        "order": order
+        "order": order,
+        "circuit_breaker": circuit_breaker
     }), 201
 
 
