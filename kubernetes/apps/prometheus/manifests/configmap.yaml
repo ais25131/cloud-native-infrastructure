@@ -17,4 +17,4 @@ data:
 
         static_configs:
           - targets:
-              - order-api-service.order-api.svc.cluster.local:80
+              - order-api-knative.order-api.svc.cluster.local:80
