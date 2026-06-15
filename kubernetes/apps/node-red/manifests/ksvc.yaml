@@ -37,7 +37,9 @@ spec:
             - -c
           args:
             - |
+              set -a
               . /vault/secrets/node-red.env
+              set +a
 
               mkdir -p /tmp/node-red-data
               cp /config/flows.json /tmp/node-red-data/flows.json
