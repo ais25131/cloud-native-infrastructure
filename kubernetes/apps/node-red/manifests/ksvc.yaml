@@ -10,7 +10,7 @@ spec:
       annotations:
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "3"
-        serving.knative.dev/rollout: "vault-credentials-v1"
+        serving.knative.dev/rollout: "readiness-probe-v1"
 
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "node-red-role"
@@ -69,9 +69,19 @@ spec:
           ports:
             - containerPort: 1880
 
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 1880
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
+
           volumeMounts:
             - name: node-red-flows-import
               mountPath: /config
+              readOnly: true
 
           resources:
             requests:
