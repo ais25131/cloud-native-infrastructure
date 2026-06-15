@@ -29,6 +29,7 @@ load_vault_env_file()
 app = Flask(__name__)
 
 orders = []
+idempotency_store = {}
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.rabbitmq.svc.cluster.local")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "user")
@@ -143,7 +144,7 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "v4-retry")
+        "version": os.getenv("APP_VERSION", "22-idempotency")
     })
 
 
@@ -169,6 +170,14 @@ def get_orders():
 
 @app.route("/orders", methods=["POST"])
 def create_order():
+    idempotency_key = request.headers.get("Idempotency-Key")
+
+    if idempotency_key and idempotency_key in idempotency_store:
+        return jsonify({
+            "message": "Duplicate request ignored",
+            "order": idempotency_store[idempotency_key]
+        }), 200
+
     data = request.get_json() or {}
 
     order = {
@@ -177,10 +186,14 @@ def create_order():
         "id": len(orders) + 1,
         "product": data.get("product"),
         "quantity": data.get("quantity"),
+        "idempotency_key": idempotency_key,
         "created_at": datetime.utcnow().isoformat()
     }
 
     orders.append(order)
+
+    if idempotency_key:
+        idempotency_store[idempotency_key] = order
 
     ORDERS_CREATED_TOTAL.inc()
     ORDERS_IN_MEMORY.set(len(orders))
@@ -203,6 +216,18 @@ def create_order():
 def woocommerce_order_webhook():
     data = request.get_json() or {}
 
+    woocommerce_order_id = data.get("id")
+    idempotency_key = request.headers.get("Idempotency-Key")
+
+    if not idempotency_key and woocommerce_order_id:
+        idempotency_key = f"woocommerce-order-{woocommerce_order_id}"
+
+    if idempotency_key and idempotency_key in idempotency_store:
+        return jsonify({
+            "message": "Duplicate WooCommerce order ignored",
+            "order": idempotency_store[idempotency_key]
+        }), 200
+
     line_items = data.get("line_items", [])
     billing = data.get("billing", {})
 
@@ -210,7 +235,7 @@ def woocommerce_order_webhook():
         "event_type": "woocommerce_order_created",
         "source": "woocommerce",
         "id": len(orders) + 1,
-        "woocommerce_order_id": data.get("id"),
+        "woocommerce_order_id": woocommerce_order_id,
         "status": data.get("status"),
         "currency": data.get("currency"),
         "total": data.get("total"),
@@ -228,10 +253,14 @@ def woocommerce_order_webhook():
             }
             for item in line_items
         ],
+        "idempotency_key": idempotency_key,
         "created_at": datetime.utcnow().isoformat()
     }
 
     orders.append(order)
+
+    if idempotency_key:
+        idempotency_store[idempotency_key] = order
 
     ORDERS_CREATED_TOTAL.inc()
     ORDERS_IN_MEMORY.set(len(orders))
