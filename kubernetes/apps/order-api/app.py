@@ -1,10 +1,10 @@
-# δοκιμη 
 from flask import Flask, jsonify, request, Response
 from datetime import datetime
 import socket
 import os
 import pika
 import json
+import time
 
 from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
@@ -51,36 +51,90 @@ RABBITMQ_PUBLISH_TOTAL = Counter(
     "Total number of messages published to RabbitMQ"
 )
 
+RABBITMQ_PUBLISH_RETRY_TOTAL = Counter(
+    "rabbitmq_publish_retry_total",
+    "Total number of RabbitMQ publish retry attempts"
+)
 
-def publish_order(order):
-    credentials = pika.PlainCredentials(
-        RABBITMQ_USER,
-        RABBITMQ_PASSWORD
+RABBITMQ_PUBLISH_FAILED_TOTAL = Counter(
+    "rabbitmq_publish_failed_total",
+    "Total number of failed RabbitMQ publish operations"
+)
+
+
+def publish_order(order, max_retries=5, retry_delay=3):
+    last_error = None
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            credentials = pika.PlainCredentials(
+                RABBITMQ_USER,
+                RABBITMQ_PASSWORD
+            )
+
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST,
+                    port=RABBITMQ_PORT,
+                    credentials=credentials,
+                    connection_attempts=1,
+                    retry_delay=0
+                )
+            )
+
+            channel = connection.channel()
+
+            channel.queue_declare(
+                queue=RABBITMQ_QUEUE,
+                durable=True
+            )
+
+            channel.basic_publish(
+                exchange="",
+                routing_key=RABBITMQ_QUEUE,
+                body=json.dumps(order),
+                properties=pika.BasicProperties(
+                    delivery_mode=2
+                )
+            )
+
+            connection.close()
+
+            RABBITMQ_PUBLISH_TOTAL.inc()
+
+            print(
+                f"RabbitMQ publish successful "
+                f"for order_id={order.get('id')} "
+                f"attempt={attempt}",
+                flush=True
+            )
+
+            return True
+
+        except Exception as error:
+            last_error = error
+            RABBITMQ_PUBLISH_RETRY_TOTAL.inc()
+
+            print(
+                f"RabbitMQ publish failed. "
+                f"Retry {attempt}/{max_retries}. "
+                f"Error: {error}",
+                flush=True
+            )
+
+            if attempt < max_retries:
+                time.sleep(retry_delay)
+
+    RABBITMQ_PUBLISH_FAILED_TOTAL.inc()
+
+    print(
+        f"RabbitMQ publish permanently failed "
+        f"after {max_retries} attempts. "
+        f"Last error: {last_error}",
+        flush=True
     )
 
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(
-            host=RABBITMQ_HOST,
-            port=RABBITMQ_PORT,
-            credentials=credentials
-        )
-    )
-
-    channel = connection.channel()
-
-    channel.queue_declare(
-        queue=RABBITMQ_QUEUE,
-        durable=False
-    )
-
-    channel.basic_publish(
-        exchange="",
-        routing_key=RABBITMQ_QUEUE,
-        body=json.dumps(order)
-    )
-
-    connection.close()
-    RABBITMQ_PUBLISH_TOTAL.inc()
+    return False
 
 
 @app.route("/")
@@ -89,7 +143,7 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "v3")
+        "version": os.getenv("APP_VERSION", "v4-retry")
     })
 
 
@@ -131,7 +185,13 @@ def create_order():
     ORDERS_CREATED_TOTAL.inc()
     ORDERS_IN_MEMORY.set(len(orders))
 
-    publish_order(order)
+    published = publish_order(order)
+
+    if not published:
+        return jsonify({
+            "message": "Order created locally but RabbitMQ publish failed",
+            "order": order
+        }), 503
 
     return jsonify({
         "message": "Order created",
@@ -176,7 +236,13 @@ def woocommerce_order_webhook():
     ORDERS_CREATED_TOTAL.inc()
     ORDERS_IN_MEMORY.set(len(orders))
 
-    publish_order(order)
+    published = publish_order(order)
+
+    if not published:
+        return jsonify({
+            "message": "WooCommerce order received locally but RabbitMQ publish failed",
+            "order": order
+        }), 503
 
     return jsonify({
         "message": "WooCommerce order received",
