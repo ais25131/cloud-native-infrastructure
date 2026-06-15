@@ -29,7 +29,7 @@ spec:
       serviceAccountName: vault-serviceaccount
 
       containers:
-        - image: docker.io/ais25131/order-api:20
+        - image: docker.io/ais25131/order-api:21
           imagePullPolicy: Always
 
           ports:
@@ -37,7 +37,7 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "20"
+              value: "21-retry"
 
           resources:
             requests:
