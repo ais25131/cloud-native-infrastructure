@@ -178,7 +178,7 @@ data:
             "id": "85edce7f51407aaa",
             "type": "amazon s3 out",
             "z": "b016700d924c37ba",
-            "aws": "",
+            "aws": "d329961bc35eeaf9",
             "bucket": "orders",
             "filename": "",
             "localFilename": "",
