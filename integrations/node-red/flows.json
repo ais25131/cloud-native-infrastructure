@@ -168,6 +168,13 @@
         "wires": []
     },
     {
+        "id": "d329961bc35eeaf9",
+        "type": "aws-config",
+        "endpoint": "${MINIO_ENDPOINT}",
+        "forcepathstyle": true,
+        "skiptlsverify": false
+    },
+    {
         "id": "85edce7f51407aaa",
         "type": "amazon s3 out",
         "z": "b016700d924c37ba",
