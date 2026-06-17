@@ -37,7 +37,7 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "25-events-through-order-api"
+              value: "26-events-through-order-api"
 
             - name: PUSHGATEWAY_URL
               value: "pushgateway.monitoring.svc.cluster.local:9091"
