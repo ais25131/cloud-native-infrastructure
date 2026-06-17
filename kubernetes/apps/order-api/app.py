@@ -189,7 +189,8 @@ def publish_event(event, max_retries=5, retry_delay=3):
 
             channel.queue_declare(
                 queue=RABBITMQ_QUEUE,
-                durable=True
+                durable=False,
+                auto_delete=False
             )
 
             channel.basic_publish(
@@ -197,7 +198,7 @@ def publish_event(event, max_retries=5, retry_delay=3):
                 routing_key=RABBITMQ_QUEUE,
                 body=json.dumps(event),
                 properties=pika.BasicProperties(
-                    delivery_mode=2
+                    delivery_mode=1
                 )
             )
 
