@@ -18,18 +18,15 @@ spec:
         vault.hashicorp.com/agent-inject-secret-rabbitmq: "secret/data/rabbitmq"
         vault.hashicorp.com/agent-inject-template-rabbitmq: |
           {{- with secret "secret/data/rabbitmq" -}}
-          RABBITMQ_HOST={{ .Data.data.rabbitmq_host }}
           RABBITMQ_USER={{ .Data.data.rabbitmq_user }}
           RABBITMQ_PASSWORD={{ .Data.data.rabbitmq_password }}
-          RABBITMQ_PORT={{ .Data.data.port }}
-          RABBITMQ_QUEUE={{ .Data.data.queue }}
           {{- end }}
 
     spec:
       serviceAccountName: vault-serviceaccount
 
       containers:
-        - image: docker.io/ais25131/order-api:25
+        - image: docker.io/ais25131/order-api:27
           imagePullPolicy: Always
 
           ports:
@@ -41,6 +38,15 @@ spec:
 
             - name: PUSHGATEWAY_URL
               value: "pushgateway.monitoring.svc.cluster.local:9091"
+
+            - name: RABBITMQ_HOST
+              value: "rabbitmq.rabbitmq.svc.cluster.local"
+
+            - name: RABBITMQ_PORT
+              value: "5672"
+
+            - name: RABBITMQ_QUEUE
+              value: "orders"
 
           resources:
             requests:
