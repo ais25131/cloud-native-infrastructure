@@ -8,70 +8,6 @@
         "env": []
     },
     {
-        "id": "4153b08e5d491b04",
-        "type": "amqp-in",
-        "z": "b016700d924c37ba",
-        "name": "",
-        "broker": "7bfec4c89afd5431",
-        "prefetch": 0,
-        "noAck": true,
-        "exchangeName": "amq.topic",
-        "exchangeType": "topic",
-        "exchangeRoutingKey": "system.minio",
-        "exchangeDurable": true,
-        "queueName": "events",
-        "queueExclusive": false,
-        "queueDurable": false,
-        "queueAutoDelete": false,
-        "headers": "{}",
-        "x": 160,
-        "y": 120,
-        "wires": [
-            [
-                "069c626bb63a039c"
-            ]
-        ]
-    },
-    {
-        "id": "069c626bb63a039c",
-        "type": "function",
-        "z": "b016700d924c37ba",
-        "name": "parse MinIO notification",
-        "func": "// 1) Parse AMQP body (Buffer -> JSON)\n let data = msg.payload;\n \n if (msg.content) {\n const text = msg.content.toString(\"utf8\");\n try {\n data = JSON.parse(text);\n } catch (e) {\n\n const rawMsg = { ...msg, payload: { raw: text } };\n \n return [rawMsg, null];\n }\n }\n // 2) Flat notification payload\n const rec = (data.Records && data.Records[0]) ? data.Records[0] : {};\n \n const flat = {\n event: data.EventName || rec.eventName || \"unknown\",\n objectKey: data.Key || (rec.s3 && rec.s3.object && rec.s3.object.key) || \"unknown\",\n bucket: (rec.s3 && rec.s3.bucket && rec.s3.bucket.name) || \"unknown\",\n size: (rec.s3 && rec.s3.object && rec.s3.object.size) || 0,\n eventTime: rec.eventTime || new Date().toISOString()\n };\n \n\n const rawMsg = { ...msg, payload: flat };\n \n \n const dlMsg = { ...msg, payload: flat };\n \n return [rawMsg, dlMsg];",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 470,
-        "y": 120,
-        "wires": [
-            [],
-            [
-                "c4e860022dee184b"
-            ]
-        ]
-    },
-    {
-        "id": "707e1c30c4e6852e",
-        "type": "http in",
-        "z": "b016700d924c37ba",
-        "name": "",
-        "url": "/wp-event",
-        "method": "post",
-        "upload": false,
-        "skipBodyParsing": false,
-        "swaggerDoc": "",
-        "x": 160,
-        "y": 380,
-        "wires": [
-            [
-                "15369ccd8703a38f"
-            ]
-        ]
-    },
-    {
         "id": "15369ccd8703a38f",
         "type": "json",
         "z": "b016700d924c37ba",
@@ -92,8 +28,8 @@
         "type": "function",
         "z": "b016700d924c37ba",
         "name": "validate_wp_event",
-        "func": "const expectedSecret = \"supersecret123\";\nconst receivedSecret = msg.req?.headers?.[\"x-event-secret\"];\n\n\nlet event = msg.payload;\n\nif (typeof event === \"string\") {\n    try { event = JSON.parse(event); } catch(e) {}\n}\n\nif (receivedSecret !== expectedSecret) {\n    msg.statusCode = 401;\n    msg.payload = { error: \"Unauthorized\" };\n    return msg;\n}\n\nif (!event || !event.event_type) {\n    msg.statusCode = 400;\n    msg.payload = { error: \"Invalid payload\" };\n    return msg;\n}\n\nmsg.statusCode = 200;\nmsg.event = event;              \nmsg.payload = { status: \"ok\" }; \nreturn [msg, msg];\n",
-        "outputs": 2,
+        "func": "const ev = msg.payload || {};\n\nif (!ev.event_type) {\n    msg.statusCode = 400;\n    msg.payload = { error: \"Missing event_type\" };\n    return [msg, null, null];\n}\n\nmsg.businessEvent = ev;\n\nreturn [msg, msg, msg];",
+        "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -103,9 +39,10 @@
         "y": 380,
         "wires": [
             [
-                "dbe63217bad2433d",
-                "a54023cf17ffdf96",
-                "http-response-wp-event"
+                "70c2b114990fb2f3"
+            ],
+            [
+                "a54023cf17ffdf96"
             ],
             [
                 "791cbca18c91ae35"
@@ -113,28 +50,11 @@
         ]
     },
     {
-        "id": "dbe63217bad2433d",
-        "type": "debug",
-        "z": "b016700d924c37ba",
-        "name": "debug 7",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 600,
-        "y": 320,
-        "wires": []
-    },
-    {
         "id": "791cbca18c91ae35",
         "type": "function",
         "z": "b016700d924c37ba",
         "name": "build_minio_object",
-        "func": "/**\n * Function node: build_s3_object\n * Outputs:\n *  1) Upload message for amazon s3 out (MinIO)\n */\n\nif (typeof msg.payload === \"string\") {\n  try {\n    msg.payload = JSON.parse(msg.payload);\n  } catch (e) {\n    msg.statusCode = 400;\n    msg.payload = { error: \"Invalid JSON payload\" };\n    return null;\n  }\n}\n\nconst e = msg.event || msg.payload;\n\nif (!e || typeof e !== \"object\") {\n  msg.statusCode = 400;\n  msg.payload = { error: \"Missing event object\" };\n  return null;\n}\n\nconst now = new Date();\nconst yyyy = now.getFullYear();\nconst mm = String(now.getMonth() + 1).padStart(2, \"0\");\nconst dd = String(now.getDate()).padStart(2, \"0\");\nconst ts = now.toISOString().replace(/[:.]/g, \"-\");\n\nconst type = e.event_type || \"unknown\";\nconst user =\n  e.user?.username ||\n  e.order?.user?.username ||\n  \"anonymous\";\n\nconst key = `${type}/${yyyy}/${mm}/${dd}/${ts}_${user}.json`;\n\nmsg.payload = JSON.stringify(e);\nmsg.key = key;\nmsg.filename = key;\nmsg.objectKey = key;\nmsg.s3 = { key: key };\n\nreturn msg;",
+        "func": "const ev = msg.businessEvent || msg.payload || {};\n\nconst eventType = ev.event_type || \"unknown\";\nconst username = ev.user?.username || ev.username || \"unknown\";\n\nconst eventTime = ev.received_at || ev.timestamp || new Date().toISOString();\nconst d = new Date(eventTime);\n\nconst year = d.getFullYear();\nconst month = String(d.getMonth() + 1).padStart(2, \"0\");\nconst day = String(d.getDate()).padStart(2, \"0\");\n\nlet folder = \"unknown\";\n\nif (eventType === \"login\") {\n    folder = \"login\";\n}\n\nif (eventType === \"cart_add\") {\n    folder = \"add_item\";\n}\n\nif (eventType === \"order_created\") {\n    folder = \"create_order\";\n}\n\nconst safeUsername = String(username).replace(/[^a-zA-Z0-9._-]/g, \"_\");\nconst eventId = String(ev.event_id || Date.now()).replace(/[^a-zA-Z0-9._-]/g, \"_\");\n\nconst objectKey = `${folder}/${year}/${month}/${day}/${eventId}_${safeUsername}.json`;\n\nmsg.payload = JSON.stringify(ev, null, 2);\n\nmsg.bucket = \"events\";\nmsg.filename = objectKey;\n\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -142,30 +62,12 @@
         "finalize": "",
         "libs": [],
         "x": 850,
-        "y": 420,
+        "y": 440,
         "wires": [
             [
-                "85edce7f51407aaa",
-                "aebae90b0e59b403"
+                "85edce7f51407aaa"
             ]
         ]
-    },
-    {
-        "id": "b65023957439ef71",
-        "type": "debug",
-        "z": "b016700d924c37ba",
-        "name": "debug 8",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1140,
-        "y": 320,
-        "wires": []
     },
     {
         "id": "d329961bc35eeaf9",
@@ -185,187 +87,25 @@
         "region": "us-east-1",
         "name": "Minio events",
         "x": 1080,
-        "y": 420,
+        "y": 440,
         "wires": []
-    },
-    {
-        "id": "de26b1d9be6f695e",
-        "type": "function",
-        "z": "b016700d924c37ba",
-        "name": "normalize_object_key",
-        "func": "const bucket = msg.payload.bucket;\nlet key = msg.payload.objectKey;\n\n\nif (key && bucket && key.startsWith(bucket + \"/\")) {\n    key = key.slice((bucket + \"/\").length);\n}\n\n\nif (key) {\n    try {\n        key = decodeURIComponent(key.replace(/\\+/g, '%20'));\n    } catch (e) {\n        // ignore\n    }\n}\n\nmsg.minio = { bucket, key };\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 760,
-        "y": 140,
-        "wires": [
-            [
-                "c3fc4e3664a76c21"
-            ]
-        ]
-    },
-    {
-        "id": "747bf408966287d0",
-        "type": "mqtt out",
-        "z": "b016700d924c37ba",
-        "name": "",
-        "topic": "v1/devices/me/telemetry",
-        "qos": "",
-        "retain": "",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "eea479fe5b198964",
-        "x": 1290,
-        "y": 140,
-        "wires": []
-    },
-    {
-        "id": "c4e860022dee184b",
-        "type": "function",
-        "z": "b016700d924c37ba",
-        "name": "filter_only_object_created",
-        "func": "// function: filter_only_object_created\nconst ev = msg.payload?.event || \"\";\n\n\nif (!ev.startsWith(\"s3:ObjectCreated:\")) {\n \n  return null;\n}\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 590,
-        "y": 200,
-        "wires": [
-            [
-                "de26b1d9be6f695e"
-            ]
-        ]
-    },
-    {
-        "id": "678c930f8d317a67",
-        "type": "amqp-in",
-        "z": "b016700d924c37ba",
-        "name": "",
-        "broker": "7bfec4c89afd5431",
-        "prefetch": 0,
-        "noAck": true,
-        "exchangeName": "",
-        "exchangeType": "topic",
-        "exchangeRoutingKey": "",
-        "exchangeDurable": true,
-        "queueName": "orders",
-        "queueExclusive": false,
-        "queueDurable": false,
-        "queueAutoDelete": false,
-        "headers": "{}",
-        "x": 200,
-        "y": 740,
-        "wires": [
-            [
-                "b6b1ccafe7baced5"
-            ]
-        ]
-    },
-    {
-        "id": "b6b1ccafe7baced5",
-        "type": "json",
-        "z": "b016700d924c37ba",
-        "name": "",
-        "property": "payload",
-        "action": "",
-        "pretty": false,
-        "x": 410,
-        "y": 740,
-        "wires": [
-            [
-                "6b90fa1554292735"
-            ]
-        ]
-    },
-    {
-        "id": "6b90fa1554292735",
-        "type": "function",
-        "z": "b016700d924c37ba",
-        "name": "build_tb_telemetry",
-        "func": "let order = msg.payload;\n\n// Αν έρθει ως string, κάνε parse\nif (typeof order === \"string\") {\n    order = JSON.parse(order);\n}\n\nlet items = order.items || order.line_items || [];\n\nmsg.payload = {\n    event_type: order.event_type || \"order_created\",\n    source: order.source || \"order-api\",\n\n    order_id: order.id || null,\n    woocommerce_order_id: order.woocommerce_order_id || order.id || null,\n\n    status: order.status || \"unknown\",\n\n    customer: order.customer_name || \n              ((order.billing?.first_name || \"\") + \" \" + (order.billing?.last_name || \"\")).trim() || \n              \"unknown\",\n\n    email: order.customer_email || order.billing?.email || \"unknown\",\n\n    product: order.product || (items[0] ? items[0].name : \"unknown\"),\n    quantity: order.quantity || (items[0] ? items[0].quantity : 0),\n\n    total: parseFloat(order.total || 0),\n    currency: order.currency || \"EUR\",\n\n    items_count: items.length || (order.quantity ? 1 : 0),\n\n    created_at: order.created_at || new Date().toISOString()\n};\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 590,
-        "y": 740,
-        "wires": [
-            [
-                "2e5e72203f362ced"
-            ]
-        ]
-    },
-    {
-        "id": "2e5e72203f362ced",
-        "type": "http request",
-        "z": "b016700d924c37ba",
-        "name": "",
-        "method": "POST",
-        "ret": "txt",
-        "paytoqs": "ignore",
-        "url": "http://thingsboard.thingsboard.svc.cluster.local:8080/api/v1/${THINGSBOARD_TOKEN}/telemetry",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 830,
-        "y": 740,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "c3fc4e3664a76c21",
-        "type": "function",
-        "z": "b016700d924c37ba",
-        "name": "build_minio_telemetry",
-        "func": "const ev = msg.payload || {};\nconst minio = msg.minio || {};\n\nconst objectKey = minio.key || ev.objectKey || \"unknown\";\nconst bucket = minio.bucket || ev.bucket || \"unknown\";\n\nconst parts = objectKey.split(\"/\");\nconst businessEventType = parts[0] || \"unknown\";\n\nconst filename = parts[parts.length - 1] || \"\";\nlet username = \"unknown\";\n\nconst match = filename.match(/_([^_]+)\\.json$/);\nif (match) username = match[1];\n\nlet cartItems = ev.cart_items || ev.cart_total_qty || 0;\nlet orderItems = ev.order_items || ev.order_total_qty || 0;\n\nlet message = `Event ${businessEventType} από ${username}`;\n\nif (businessEventType === \"cart_add\") {\n  message = `Ο χρήστης ${username} έβαλε προϊόν στο καλάθι. Σύνολο προϊόντων στο καλάθι: ${cartItems}`;\n}\n\nif (businessEventType === \"order_created\") {\n  message = `Ο χρήστης ${username} αγόρασε ${orderItems || 1} προϊόν`;\n}\n\nmsg.payload = {\n  source: \"minio\",\n  business_event_type: businessEventType,\n  username: username,\n  cart_items: cartItems,\n  order_items: orderItems,\n  message: message,\n  bucket: bucket,\n  object_key: objectKey,\n  event_time: ev.eventTime || new Date().toISOString()\n};\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1000,
-        "y": 140,
-        "wires": [
-            [
-                "747bf408966287d0"
-            ]
-        ]
     },
     {
         "id": "a54023cf17ffdf96",
         "type": "function",
         "z": "b016700d924c37ba",
         "name": "build_wp_business_telemetry",
-        "func": "const ev = msg.event || msg.payload || {};\nconst type = ev.event_type || \"unknown\";\nconst username = ev.user?.username || \"unknown\";\n\nfunction countItems(items) {\n  if (!Array.isArray(items)) return 0;\n  return items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);\n}\n\nconst cartItems = countItems(ev.cart?.items);\nconst orderItems = countItems(ev.order?.items);\n\nlet message = `Ο χρήστης ${username} έκανε event ${type}`;\n\nif (type === \"login\") {\n  message = `Ο χρήστης ${username} συνδέθηκε στο e-shop`;\n}\n\nif (type === \"cart_add\") {\n  message = `Ο χρήστης ${username} έβαλε προϊόν στο καλάθι. Σύνολο προϊόντων στο καλάθι: ${cartItems}`;\n}\n\nif (type === \"order_created\") {\n  message = `Ο χρήστης ${username} αγόρασε ${orderItems} προϊόν`;\n}\n\nmsg.headers = {\n  \"Content-Type\": \"application/json\"\n};\n\nmsg.payload = {\n  source: \"wordpress\",\n  username: username,\n  business_event_type: type,\n  cart_items: cartItems,\n  order_items: orderItems,\n  message: message,\n  event_time: new Date().toISOString()\n};\n\nreturn msg;",
+        "func": "const ev = msg.businessEvent || msg.payload || {};\n\nconst eventType = ev.event_type || \"unknown\";\nconst username = ev.user?.username || ev.username || \"unknown\";\n\nconst eventTime = ev.received_at || ev.timestamp || new Date().toISOString();\n\nlet businessEventType = \"unknown\";\n\nif (eventType === \"login\") {\n    businessEventType = \"login\";\n}\n\nif (eventType === \"cart_add\") {\n    businessEventType = \"add_item\";\n}\n\nif (eventType === \"order_created\") {\n    businessEventType = \"create_order\";\n}\n\nconst cartQty =\n    ev.cart?.total_qty ??\n    ev.cart_items ??\n    ev.cart_total_qty ??\n    0;\n\nconst orderQty =\n    ev.order?.total_qty ??\n    ev.order_items ??\n    ev.order_total_qty ??\n    0;\n\nlet message = `Ο χρήστης ${username} έκανε event ${businessEventType}`;\n\nif (eventType === \"cart_add\") {\n    message = `Ο χρήστης ${username} έβαλε προϊόν στο καλάθι. Σύνολο προϊόντων στο καλάθι: ${cartQty}`;\n}\n\nif (eventType === \"order_created\") {\n    message = `Ο χρήστης ${username} ολοκλήρωσε παραγγελία. Σύνολο προϊόντων: ${orderQty || 1}`;\n}\n\nif (eventType === \"login\") {\n    message = `Ο χρήστης ${username} έκανε login`;\n}\n\nmsg.payload = {\n    event_time: eventTime,\n    ts: eventTime,\n    username: username,\n\n    event_type: eventType,\n    business_event_type: businessEventType,\n\n    message: message,\n\n    product_id: ev.cart?.added_product_id || ev.product_id || null,\n    product_sku: ev.cart?.added_product_sku || ev.product_sku || null,\n    product_name: ev.cart?.added_product_name || ev.product_name || null,\n    quantity: ev.cart?.added_quantity || ev.quantity || 1,\n\n    cart_total_qty: cartQty,\n    order_total_qty: orderQty,\n    event_id: ev.event_id || \"\"\n};\n\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 910,
-        "y": 340,
+        "x": 890,
+        "y": 380,
         "wires": [
             [
-                "b65023957439ef71",
                 "0cb70011cbac2207"
             ]
         ]
@@ -385,35 +125,7 @@
         "expiry": "",
         "broker": "eea479fe5b198964",
         "x": 1350,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "aebae90b0e59b403",
-        "type": "debug",
-        "z": "b016700d924c37ba",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1040,
-        "y": 480,
-        "wires": []
-    },
-    {
-        "id": "http-response-wp-event",
-        "type": "http response",
-        "z": "b016700d924c37ba",
-        "name": "wp-event response",
-        "statusCode": "",
-        "headers": {},
-        "x": 900,
-        "y": 300,
+        "y": 380,
         "wires": []
     },
     {
@@ -439,40 +151,42 @@
                 "valueValue": "application/json"
             }
         ],
-        "x": 1150,
-        "y": 360,
+        "x": 1130,
+        "y": 380,
         "wires": [
             [
-                "829b99b6b8a3feb1",
-                "16de89c91f29a2c6"
+                "829b99b6b8a3feb1"
             ]
         ]
     },
     {
-        "id": "16de89c91f29a2c6",
-        "type": "debug",
+        "id": "d466c383b5e8c225",
+        "type": "http in",
         "z": "b016700d924c37ba",
-        "name": "debug 2",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1360,
-        "y": 300,
-        "wires": []
+        "name": "RabbitMQ Event",
+        "url": "/",
+        "method": "post",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 180,
+        "y": 380,
+        "wires": [
+            [
+                "15369ccd8703a38f"
+            ]
+        ]
     },
     {
-        "id": "7bfec4c89afd5431",
-        "type": "amqp-broker",
-        "name": "rabbitmq-new",
-        "host": "${RABBITMQ_HOST}",
-        "port": 5672,
-        "vhost": "",
-        "tls": false,
-        "credsFromSettings": false
+        "id": "70c2b114990fb2f3",
+        "type": "http response",
+        "z": "b016700d924c37ba",
+        "name": "RabbitMQ Event Respone",
+        "statusCode": "",
+        "headers": {},
+        "x": 890,
+        "y": 320,
+        "wires": []
     },
     {
         "id": "eea479fe5b198964",
@@ -506,11 +220,10 @@
         "sessionExpiry": ""
     },
     {
-        "id": "979c5ea8046dee97",
+        "id": "7844988aab78f2f8",
         "type": "global-config",
         "env": [],
         "modules": {
-            "@meowwolf/node-red-contrib-amqp": "2.4.2",
             "node-red-node-aws": "0.4.0"
         }
     }
