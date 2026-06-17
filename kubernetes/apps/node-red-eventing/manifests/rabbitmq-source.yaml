@@ -5,6 +5,8 @@ metadata:
   namespace: node-red
 spec:
   rabbitmqClusterReference:
+    name: rabbitmq
+    namespace: rabbitmq
     connectionSecret:
       name: rabbitmq-secret-credentials
 
@@ -13,9 +15,6 @@ spec:
     exchangeName: amq.topic
     queueName: events
     parallelism: 1
-
-  serviceName: rabbitmq.rabbitmq.svc.cluster.local
-  port: 5672
 
   sink:
     ref:
