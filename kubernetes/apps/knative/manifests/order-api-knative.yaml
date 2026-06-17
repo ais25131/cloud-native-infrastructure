@@ -19,8 +19,8 @@ spec:
         vault.hashicorp.com/agent-inject-template-rabbitmq: |
           {{- with secret "secret/data/rabbitmq" -}}
           RABBITMQ_HOST={{ .Data.data.host }}
-          RABBITMQ_USER={{ .Data.data.username }}
-          RABBITMQ_PASSWORD={{ .Data.data.password }}
+          RABBITMQ_USER={{ .Data.data.rabbitmq_user }}
+          RABBITMQ_PASSWORD={{ .Data.data.rabbitmq_password }}
           RABBITMQ_PORT={{ .Data.data.port }}
           RABBITMQ_QUEUE={{ .Data.data.queue }}
           {{- end }}
