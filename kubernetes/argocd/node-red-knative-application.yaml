@@ -1,21 +1,26 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
+
 metadata:
-  name: order-api
+  name: node-red-knative
   namespace: argocd
+
 spec:
   project: default
 
   source:
-    repoURL: https://github.com/ais25131/cloud-native-infrastructure.git
+    repoURL: https://github.com/ais25131/cloud-platforms.git
     targetRevision: main
-    path: kubernetes/apps/order-api/manifests
+    path: kubernetes/apps/node-red/manifests
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: node-red
 
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true

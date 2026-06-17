@@ -6,7 +6,13 @@ import pika
 import json
 import time
 
-from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import (
+    Counter,
+    Gauge,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+    push_to_gateway
+)
 
 
 def load_vault_env_file(path="/vault/secrets/rabbitmq"):
@@ -39,11 +45,20 @@ circuit_breaker = {
     "recovery_timeout": 30
 }
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.rabbitmq.svc.cluster.local")
+RABBITMQ_HOST = os.getenv(
+    "RABBITMQ_HOST",
+    "rabbitmq.rabbitmq.svc.cluster.local"
+)
+
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "user")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "password")
 RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "orders")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
+
+PUSHGATEWAY_URL = os.getenv(
+    "PUSHGATEWAY_URL",
+    "pushgateway.monitoring.svc.cluster.local:9091"
+)
 
 ORDERS_CREATED_TOTAL = Counter(
     "orders_created_total",
@@ -69,6 +84,25 @@ RABBITMQ_PUBLISH_FAILED_TOTAL = Counter(
     "rabbitmq_publish_failed_total",
     "Total number of failed RabbitMQ publish operations"
 )
+
+
+def push_metrics():
+    try:
+        push_to_gateway(
+            PUSHGATEWAY_URL,
+            job="order-api"
+        )
+
+        print(
+            "Metrics pushed to Pushgateway",
+            flush=True
+        )
+
+    except Exception as error:
+        print(
+            f"Failed to push metrics to Pushgateway: {error}",
+            flush=True
+        )
 
 
 def is_circuit_open():
@@ -108,6 +142,10 @@ def publish_order(order, max_retries=5, retry_delay=3):
             "Skipping RabbitMQ publish.",
             flush=True
         )
+
+        RABBITMQ_PUBLISH_FAILED_TOTAL.inc()
+        push_metrics()
+
         return False
 
     last_error = None
@@ -149,6 +187,7 @@ def publish_order(order, max_retries=5, retry_delay=3):
 
             RABBITMQ_PUBLISH_TOTAL.inc()
             record_publish_success()
+            push_metrics()
 
             print(
                 f"RabbitMQ publish successful "
@@ -162,6 +201,7 @@ def publish_order(order, max_retries=5, retry_delay=3):
         except Exception as error:
             last_error = error
             RABBITMQ_PUBLISH_RETRY_TOTAL.inc()
+            push_metrics()
 
             print(
                 f"RabbitMQ publish failed. "
@@ -175,6 +215,7 @@ def publish_order(order, max_retries=5, retry_delay=3):
 
     RABBITMQ_PUBLISH_FAILED_TOTAL.inc()
     record_publish_failure()
+    push_metrics()
 
     print(
         f"RabbitMQ publish permanently failed "
@@ -192,8 +233,9 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "23-circuit-breaker"),
-        "circuit_breaker": circuit_breaker
+        "version": os.getenv("APP_VERSION", "24-pushgateway"),
+        "circuit_breaker": circuit_breaker,
+        "pushgateway": PUSHGATEWAY_URL
     })
 
 
@@ -206,7 +248,10 @@ def health():
 
 @app.route("/metrics")
 def metrics():
-    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+    return Response(
+        generate_latest(),
+        mimetype=CONTENT_TYPE_LATEST
+    )
 
 
 @app.route("/orders", methods=["GET"])
@@ -248,6 +293,7 @@ def create_order():
 
     ORDERS_CREATED_TOTAL.inc()
     ORDERS_IN_MEMORY.set(len(orders))
+    push_metrics()
 
     published = publish_order(order)
 
@@ -318,12 +364,16 @@ def woocommerce_order_webhook():
 
     ORDERS_CREATED_TOTAL.inc()
     ORDERS_IN_MEMORY.set(len(orders))
+    push_metrics()
 
     published = publish_order(order)
 
     if not published:
         return jsonify({
-            "message": "WooCommerce order received locally but RabbitMQ publish failed",
+            "message": (
+                "WooCommerce order received locally "
+                "but RabbitMQ publish failed"
+            ),
             "order": order,
             "circuit_breaker": circuit_breaker
         }), 503
@@ -336,4 +386,7 @@ def woocommerce_order_webhook():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(
+        host="0.0.0.0",
+        port=5000
+    )

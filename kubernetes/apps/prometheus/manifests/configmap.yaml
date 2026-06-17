@@ -3,6 +3,7 @@ kind: ConfigMap
 
 metadata:
   name: prometheus-config
+  namespace: monitoring
 
 data:
   prometheus.yml: |
@@ -11,10 +12,8 @@ data:
 
     scrape_configs:
 
-      - job_name: 'order-api'
-
-        metrics_path: /metrics
+      - job_name: 'pushgateway'
 
         static_configs:
           - targets:
-              - order-api-knative.order-api.svc.cluster.local:80
+              - pushgateway.monitoring.svc.cluster.local:9091
