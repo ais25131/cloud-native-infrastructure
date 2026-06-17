@@ -1,83 +1,144 @@
 <?php
 /*
 Plugin Name: TB Events
-Description: Sends WordPress/WooCommerce events to Node-RED.
-Version: 1.0
+Description: Sends WordPress/WooCommerce events to Order API and Node-RED.
+Version: 2.0
 */
 
 define('TB_NODE_RED_URL', 'http://node-red-knative.node-red.svc.cluster.local/wp-event');
+define('TB_ORDER_API_URL', 'http://order-api-knative.order-api.svc.cluster.local');
 define('TB_EVENT_SECRET', 'supersecret123');
 
-function tb_send($event) {
-    if (empty($event['event_type'])) return;
+/*
+ * Generic POST helper
+ */
+function tb_post_json($url, $event, $headers = []) {
+    if (empty($event['event_type'])) return false;
 
-    $resp = wp_remote_post(TB_NODE_RED_URL, [
-        'headers' => [
-            'Content-Type' => 'application/json',
-            'x-event-secret' => TB_EVENT_SECRET
-        ],
+    $default_headers = [
+        'Content-Type' => 'application/json',
+        'x-event-secret' => TB_EVENT_SECRET
+    ];
+
+    $resp = wp_remote_post($url, [
+        'headers' => array_merge($default_headers, $headers),
         'body' => wp_json_encode($event),
-        'timeout' => 5
+        'timeout' => 8
     ]);
 
     if (is_wp_error($resp)) {
         error_log('[TB Events] wp_remote_post error: ' . $resp->get_error_message());
-    } else {
-        $code = wp_remote_retrieve_response_code($resp);
-        if ($code < 200 || $code >= 300) {
-            error_log('[TB Events] Node-RED HTTP status: ' . $code);
-        }
+        return false;
     }
+
+    $code = wp_remote_retrieve_response_code($resp);
+
+    if ($code < 200 || $code >= 300) {
+        error_log('[TB Events] HTTP status ' . $code . ' for URL: ' . $url);
+        return false;
+    }
+
+    return true;
 }
 
-/* LOGIN */
+/*
+ * Login still goes directly to Node-RED.
+ */
+function tb_send_login_to_node_red($event) {
+    return tb_post_json(TB_NODE_RED_URL, $event);
+}
+
+/*
+ * Cart and order events go to Order API.
+ */
+function tb_send_event_to_order_api($event, $idempotency_key) {
+    return tb_post_json(
+        TB_ORDER_API_URL . '/events',
+        $event,
+        [
+            'Idempotency-Key' => $idempotency_key
+        ]
+    );
+}
+
+/*
+ * LOGIN
+ */
 add_action('wp_login', function($user_login) {
-    tb_send([
+    tb_send_login_to_node_red([
         'event_type' => 'login',
         'source' => 'wordpress',
+        'event_id' => 'login-' . $user_login . '-' . time(),
         'user' => [
             'username' => $user_login
         ]
     ]);
 }, 10, 1);
 
-/* CART UPDATED */
-add_action('woocommerce_cart_updated', function() {
-    if (!is_user_logged_in() || !function_exists('WC') || !WC()->cart) return;
+/*
+ * CART ADD
+ *
+ * We use woocommerce_add_to_cart instead of woocommerce_cart_updated
+ * because cart_updated can fire multiple times.
+ */
+add_action(
+    'woocommerce_add_to_cart',
+    function($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
+        if (!is_user_logged_in() || !function_exists('WC') || !WC()->cart) return;
 
-    $u = wp_get_current_user();
-    $items = [];
-    $totalQty = 0;
+        $u = wp_get_current_user();
+        $product = wc_get_product($product_id);
 
-    foreach (WC()->cart->get_cart() as $cart_item) {
-        $product = $cart_item['data'];
         $sku = ($product && method_exists($product, 'get_sku')) ? $product->get_sku() : '';
-        $qty = (int)($cart_item['quantity'] ?? 0);
-        $totalQty += $qty;
+        $name = ($product && method_exists($product, 'get_name')) ? $product->get_name() : '';
 
-        $items[] = [
-            'sku' => $sku ?: (string)($cart_item['product_id'] ?? ''),
-            'name' => ($product && method_exists($product, 'get_name')) ? $product->get_name() : '',
-            'qty' => $qty
-        ];
-    }
+        $totalQty = 0;
+        $items = [];
 
-    if ($totalQty <= 0) return;
+        foreach (WC()->cart->get_cart() as $item) {
+            $item_product = $item['data'];
+            $item_sku = ($item_product && method_exists($item_product, 'get_sku')) ? $item_product->get_sku() : '';
+            $item_qty = (int)($item['quantity'] ?? 0);
+            $totalQty += $item_qty;
 
-    tb_send([
-        'event_type' => 'cart_add',
-        'source' => 'woocommerce',
-        'user' => [
-            'username' => $u->user_login
-        ],
-        'cart' => [
-            'items' => $items,
-            'total_qty' => $totalQty
-        ]
-    ]);
-});
+            $items[] = [
+                'sku' => $item_sku ?: (string)($item['product_id'] ?? ''),
+                'name' => ($item_product && method_exists($item_product, 'get_name')) ? $item_product->get_name() : '',
+                'qty' => $item_qty
+            ];
+        }
 
-/* ORDER CREATED */
+        /*
+         * This key prevents duplicate handling if WooCommerce/plugin retries.
+         * Same cart item addition should be handled once.
+         */
+        $idempotency_key = 'cart-add-' . $u->ID . '-' . $cart_item_key;
+
+        tb_send_event_to_order_api([
+            'event_type' => 'cart_add',
+            'source' => 'woocommerce',
+            'event_id' => $idempotency_key,
+            'user' => [
+                'id' => $u->ID,
+                'username' => $u->user_login
+            ],
+            'cart' => [
+                'added_product_id' => $product_id,
+                'added_product_sku' => $sku ?: (string)$product_id,
+                'added_product_name' => $name,
+                'added_quantity' => (int)$quantity,
+                'items' => $items,
+                'total_qty' => $totalQty
+            ]
+        ], $idempotency_key);
+    },
+    10,
+    6
+);
+
+/*
+ * ORDER CREATED
+ */
 function tb_send_order_created($order_id) {
     if (!$order_id || !function_exists('wc_get_order')) return;
 
@@ -112,10 +173,14 @@ function tb_send_order_created($order_id) {
         ];
     }
 
-    tb_send([
+    $idempotency_key = 'woocommerce-order-' . $order_id;
+
+    $sent = tb_send_event_to_order_api([
         'event_type' => 'order_created',
         'source' => 'woocommerce',
+        'event_id' => $idempotency_key,
         'user' => [
+            'id' => $user_id,
             'username' => $username
         ],
         'order' => [
@@ -126,10 +191,12 @@ function tb_send_order_created($order_id) {
             'items' => $items,
             'total_qty' => $totalQty
         ]
-    ]);
+    ], $idempotency_key);
 
-    $order->update_meta_data('_tb_order_sent', '1');
-    $order->save();
+    if ($sent) {
+        $order->update_meta_data('_tb_order_sent', '1');
+        $order->save();
+    }
 }
 
 add_action('woocommerce_checkout_order_created', function($order) {
