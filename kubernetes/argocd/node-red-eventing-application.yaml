@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-red-eventing
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ais25131/cloud-platforms.git
+    targetRevision: main
+    path: kubernetes/apps/node-red-eventing/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: node-red
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

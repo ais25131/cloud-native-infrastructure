@@ -1,0 +1,2 @@
+resources:
+  - rabbitmq-source.yaml

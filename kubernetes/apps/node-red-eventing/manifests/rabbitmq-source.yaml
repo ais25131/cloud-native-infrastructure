@@ -1,0 +1,20 @@
+apiVersion: sources.knative.dev/v1alpha1
+kind: RabbitmqSource
+metadata:
+  name: rabbitmq-events-source
+  namespace: node-red
+spec:
+  rabbitmqClusterReference:
+    connectionSecret:
+      name: rabbitmq-secret-credentials
+
+  rabbitmqResourcesConfig:
+    queueName: events
+    parallelism: 1
+
+  sink:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: node-red-knative
+      namespace: node-red
