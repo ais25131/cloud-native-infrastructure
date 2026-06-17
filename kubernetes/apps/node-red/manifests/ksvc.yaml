@@ -8,9 +8,9 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "3"
-        serving.knative.dev/rollout: "aws-config-v6"
+        serving.knative.dev/rollout: "aws-config-v7"
 
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "node-red-role"
