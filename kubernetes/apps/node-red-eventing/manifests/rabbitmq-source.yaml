@@ -5,8 +5,8 @@ metadata:
   namespace: node-red
 spec:
   rabbitmqClusterReference:
-    name: rabbitmq
-    namespace: rabbitmq
+    connectionSecret:
+      name: rabbitmq-secret-credentials
 
   rabbitmqResourcesConfig:
     predeclared: true
