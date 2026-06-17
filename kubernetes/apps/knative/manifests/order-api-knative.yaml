@@ -34,7 +34,7 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "27-events-through-order-api"
+              value: "28-events-through-order-api"
 
             - name: PUSHGATEWAY_URL
               value: "pushgateway.monitoring.svc.cluster.local:9091"
@@ -46,7 +46,7 @@ spec:
               value: "5672"
 
             - name: RABBITMQ_QUEUE
-              value: "orders"
+              value: "events"
 
           resources:
             requests:
