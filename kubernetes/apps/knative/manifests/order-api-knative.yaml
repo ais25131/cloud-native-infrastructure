@@ -18,7 +18,7 @@ spec:
         vault.hashicorp.com/agent-inject-secret-rabbitmq: "secret/data/rabbitmq"
         vault.hashicorp.com/agent-inject-template-rabbitmq: |
           {{- with secret "secret/data/rabbitmq" -}}
-          RABBITMQ_HOST={{ .Data.data.host }}
+          RABBITMQ_HOST={{ .Data.data.rabbitmq_host }}
           RABBITMQ_USER={{ .Data.data.rabbitmq_user }}
           RABBITMQ_PASSWORD={{ .Data.data.rabbitmq_password }}
           RABBITMQ_PORT={{ .Data.data.port }}
@@ -37,7 +37,7 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "26-events-through-order-api"
+              value: "27-events-through-order-api"
 
             - name: PUSHGATEWAY_URL
               value: "pushgateway.monitoring.svc.cluster.local:9091"
