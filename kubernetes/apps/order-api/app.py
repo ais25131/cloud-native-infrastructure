@@ -11,7 +11,8 @@ from prometheus_client import (
     Gauge,
     generate_latest,
     CONTENT_TYPE_LATEST,
-    push_to_gateway
+    push_to_gateway,
+    REGISTRY
 )
 
 
@@ -110,8 +111,10 @@ def push_metrics():
     try:
         push_to_gateway(
             PUSHGATEWAY_URL,
-            job="order-api"
+            job="order-api",
+            registry=REGISTRY
         )
+
         print("Metrics pushed to Pushgateway", flush=True)
 
     except Exception as error:
@@ -251,7 +254,7 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "25-events-through-order-api"),
+        "version": os.getenv("APP_VERSION", "27-events-through-order-api"),
         "rabbitmq_host": RABBITMQ_HOST,
         "rabbitmq_queue": RABBITMQ_QUEUE,
         "pushgateway": PUSHGATEWAY_URL,
