@@ -1,0 +1,3 @@
+resources:
+  - https://github.com/knative/eventing/releases/download/knative-v1.22.1/eventing-crds.yaml
+  - https://github.com/knative/eventing/releases/download/knative-v1.22.1/eventing-core.yaml

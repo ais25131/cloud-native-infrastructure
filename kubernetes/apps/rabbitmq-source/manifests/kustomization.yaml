@@ -1,0 +1,2 @@
+resources:
+  - https://github.com/knative-extensions/eventing-rabbitmq/releases/download/knative-v1.22.1/rabbitmq-source.yaml
