@@ -34,4 +34,4 @@ spec:
                 --port=15672 \
                 --username="$RABBITMQ_USER" \
                 --password="$RABBITMQ_PASSWORD" \
-                declare queue name=orders durable=false auto_delete=false
+                declare queue name=events durable=false auto_delete=false
