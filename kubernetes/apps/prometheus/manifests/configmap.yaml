@@ -14,12 +14,7 @@ data:
         static_configs:
           - targets:
               - pushgateway.monitoring.svc.cluster.local:9091
-
-      - job_name: 'order-api'
-        metrics_path: /metrics
-        static_configs:
-          - targets:
-              - order-api-knative.order-api.svc.cluster.local:80
+                  
 
       - job_name: 'rabbitmq'
         metrics_path: /metrics
