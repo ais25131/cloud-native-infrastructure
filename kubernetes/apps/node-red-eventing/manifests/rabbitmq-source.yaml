@@ -9,7 +9,7 @@ spec:
       name: rabbitmq-secret-credentials
 
   rabbitmqResourcesConfig:
-    predeclared: true
+    predeclared: false
     exchangeName: amq.topic
     queueName: events
     parallelism: 1
