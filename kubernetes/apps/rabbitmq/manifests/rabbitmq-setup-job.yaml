@@ -5,7 +5,18 @@ metadata:
   namespace: rabbitmq
 spec:
   template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "rabbitmq-role"
+        vault.hashicorp.com/agent-inject-secret-rabbitmq.env: "secret/data/rabbitmq"
+        vault.hashicorp.com/agent-inject-template-rabbitmq.env: |
+          {{- with secret "secret/data/rabbitmq" -}}
+          export RABBITMQ_USER="{{ .Data.data.rabbitmq_user }}"
+          export RABBITMQ_PASSWORD="{{ .Data.data.rabbitmq_password }}"
+          {{- end }}
     spec:
+      serviceAccountName: rabbitmq
       restartPolicy: OnFailure
       containers:
         - name: setup
@@ -14,6 +25,8 @@ spec:
             - /bin/sh
             - -c
             - |
+              . /vault/secrets/rabbitmq.env
+
               sleep 20
 
               rabbitmqadmin \
@@ -22,14 +35,3 @@ spec:
                 --username="$RABBITMQ_USER" \
                 --password="$RABBITMQ_PASSWORD" \
                 declare queue name=orders durable=false auto_delete=false
-          env:
-            - name: RABBITMQ_USER
-              valueFrom:
-                secretKeyRef:
-                  name: rabbitmq-secret
-                  key: RABBITMQ_DEFAULT_USER
-            - name: RABBITMQ_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: rabbitmq-secret
-                  key: RABBITMQ_DEFAULT_PASS
