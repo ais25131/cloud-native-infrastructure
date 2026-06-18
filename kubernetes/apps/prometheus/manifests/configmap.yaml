@@ -30,11 +30,14 @@ data:
           - targets:
               - rabbitmq.rabbitmq.svc.cluster.local:15692
 
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets:
+              - kube-state-metrics.kube-state-metrics.svc.cluster.local:8080
 
   rules.yml: |
     groups:
       - name: application-scaling-alerts
-
         rules:
 
           - alert: RabbitMQQueueBacklog
@@ -46,7 +49,6 @@ data:
               summary: "RabbitMQ queue backlog detected"
               description: "Queue events has more than 5 pending messages for 1 minute."
 
-
           - alert: OrderAPIEventsDetected
             expr: increase(order_api_events_received_total[1m]) > 0
             for: 0m
@@ -55,7 +57,6 @@ data:
             annotations:
               summary: "Order API received events"
               description: "Order API received events during the last minute."
-
 
           - alert: OrderAPIPublishFailures
             expr: increase(rabbitmq_publish_failed_total[5m]) > 0
@@ -66,7 +67,6 @@ data:
               summary: "Order API RabbitMQ publish failure"
               description: "Order API failed to publish at least one event to RabbitMQ during the last 5 minutes."
 
-
           - alert: OrderAPIPublishRetries
             expr: increase(rabbitmq_publish_retry_total[5m]) > 0
             for: 0m
@@ -76,7 +76,6 @@ data:
               summary: "Order API RabbitMQ publish retries"
               description: "Order API retried publishing events to RabbitMQ during the last 5 minutes."
 
-
           - alert: RabbitMQQueueGrowing
             expr: increase(rabbitmq_queue_messages_ready{queue="events"}[2m]) > 0
             for: 1m
@@ -85,3 +84,21 @@ data:
             annotations:
               summary: "RabbitMQ queue is growing"
               description: "RabbitMQ events queue is increasing, which may indicate that Node-RED is not consuming messages fast enough."
+
+          - alert: OrderAPIScaledFromZero
+            expr: increase(kube_deployment_status_replicas_available{namespace="order-api"}[1m]) > 0
+            for: 0m
+            labels:
+              severity: info
+            annotations:
+              summary: "Order API scaled from zero"
+              description: "Order API Knative deployment increased available replicas during the last minute."
+
+          - alert: NodeREDScaledFromZero
+            expr: increase(kube_deployment_status_replicas_available{namespace="node-red"}[1m]) > 0
+            for: 0m
+            labels:
+              severity: info
+            annotations:
+              summary: "Node-RED scaled from zero"
+              description: "Node-RED Knative deployment increased available replicas during the last minute."
