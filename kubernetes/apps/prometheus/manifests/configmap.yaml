@@ -37,7 +37,7 @@ data:
 
   rules.yml: |
     groups:
-      - name: application-scaling-alerts
+      - name: application-alerts
         rules:
 
           - alert: RabbitMQQueueBacklog
@@ -48,15 +48,6 @@ data:
             annotations:
               summary: "RabbitMQ queue backlog detected"
               description: "Queue events has more than 5 pending messages for 1 minute."
-
-          - alert: OrderAPIEventsDetected
-            expr: increase(order_api_events_received_total[1m]) > 0
-            for: 0m
-            labels:
-              severity: info
-            annotations:
-              summary: "Order API received events"
-              description: "Order API received events during the last minute."
 
           - alert: OrderAPIPublishFailures
             expr: increase(rabbitmq_publish_failed_total[5m]) > 0
@@ -84,21 +75,3 @@ data:
             annotations:
               summary: "RabbitMQ queue is growing"
               description: "RabbitMQ events queue is increasing, which may indicate that Node-RED is not consuming messages fast enough."
-
-          - alert: OrderAPIScaledFromZero
-            expr: increase(kube_deployment_status_replicas_available{namespace="order-api"}[1m]) > 0
-            for: 0m
-            labels:
-              severity: info
-            annotations:
-              summary: "Order API scaled from zero"
-              description: "Order API Knative deployment increased available replicas during the last minute."
-
-          - alert: NodeREDScaledFromZero
-            expr: increase(kube_deployment_status_replicas_available{namespace="node-red"}[1m]) > 0
-            for: 0m
-            labels:
-              severity: info
-            annotations:
-              summary: "Node-RED scaled from zero"
-              description: "Node-RED Knative deployment increased available replicas during the last minute."
