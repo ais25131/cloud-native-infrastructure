@@ -10,6 +10,7 @@ import uuid
 from prometheus_client import (
     Counter,
     Gauge,
+    Info,   
     generate_latest,
     CONTENT_TYPE_LATEST,
     push_to_gateway,
@@ -111,6 +112,11 @@ RABBITMQ_PUBLISH_FAILED_TOTAL = Counter(
     "Total number of failed RabbitMQ publish operations"
 )
 
+ORDER_API_EVENT_INFO = Gauge(
+    "order_api_event_info",
+    "Event received by Order API with unique event id",
+    ["event_type", "event_id"]
+)
 
 def build_event_id(event_type, data, request_idempotency_key):
     if event_type == "order_created":
@@ -369,6 +375,11 @@ def receive_event():
 
     EVENTS_RECEIVED_TOTAL.labels(event_type=event_type).inc()
     EVENTS_IN_MEMORY.set(len(events))
+    
+    ORDER_API_EVENT_INFO.labels(
+    event_type=event_type,
+    event_id=event_id
+    ).set(1)
 
     if event_type == "order_created":
         ORDERS_CREATED_TOTAL.inc()
@@ -460,6 +471,10 @@ def create_manual_order():
 
     EVENTS_RECEIVED_TOTAL.labels(event_type="order_created").inc()
     ORDERS_CREATED_TOTAL.inc()
+    ORDER_API_EVENT_INFO.labels(
+    event_type="order_created",
+    event_id=idempotency_key
+    ).set(1)
     ORDERS_IN_MEMORY.set(len(orders))
     EVENTS_IN_MEMORY.set(len(events))
     push_metrics()
