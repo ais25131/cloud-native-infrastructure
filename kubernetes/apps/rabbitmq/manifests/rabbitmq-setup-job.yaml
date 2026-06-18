@@ -8,6 +8,7 @@ spec:
     metadata:
       annotations:
         vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-pre-populate-only: "true"
         vault.hashicorp.com/role: "rabbitmq-role"
         vault.hashicorp.com/agent-inject-secret-rabbitmq.env: "secret/data/rabbitmq"
         vault.hashicorp.com/agent-inject-template-rabbitmq.env: |
