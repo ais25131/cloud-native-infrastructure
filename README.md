@@ -1,4 +1,3 @@
-````markdown
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-1.33-blue)
 ![Knative](https://img.shields.io/badge/Knative-Serverless-orange)
 ![ArgoCD](https://img.shields.io/badge/ArgoCD-GitOps-red)
