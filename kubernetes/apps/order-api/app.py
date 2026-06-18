@@ -1,10 +1,11 @@
 from flask import Flask, jsonify, request, Response
-from datetime import datetime
+from datetime import datetime, timezone
 import socket
 import os
 import pika
 import json
 import time
+import uuid
 
 from prometheus_client import (
     Counter,
@@ -14,6 +15,10 @@ from prometheus_client import (
     push_to_gateway,
     REGISTRY
 )
+
+
+def now_iso():
+    return datetime.now(timezone.utc).isoformat()
 
 
 def load_vault_env_file(path="/vault/secrets/rabbitmq"):
@@ -105,6 +110,55 @@ RABBITMQ_PUBLISH_FAILED_TOTAL = Counter(
     "rabbitmq_publish_failed_total",
     "Total number of failed RabbitMQ publish operations"
 )
+
+
+def build_event_id(event_type, data, request_idempotency_key):
+    if event_type == "order_created":
+        order = data.get("order", {})
+        order_id = order.get("id") or data.get("order_id")
+
+        return (
+            request_idempotency_key
+            or data.get("event_id")
+            or f"order-created-{order_id or uuid.uuid4()}"
+        )
+
+    if event_type == "cart_add":
+        user = data.get("user", {})
+        cart = data.get("cart", {})
+
+        username = (
+            user.get("username")
+            or data.get("username")
+            or "unknown"
+        )
+
+        product_id = (
+            data.get("product_id")
+            or data.get("product", {}).get("id")
+            or "unknown-product"
+        )
+
+        cart_total_qty = (
+            cart.get("total_qty")
+            or data.get("cart_total_qty")
+            or data.get("cart_items")
+            or "unknown-qty"
+        )
+
+        return (
+            f"cart-add-"
+            f"{username}-"
+            f"{product_id}-"
+            f"{cart_total_qty}-"
+            f"{uuid.uuid4()}"
+        )
+
+    return (
+        request_idempotency_key
+        or data.get("event_id")
+        or f"{event_type}-{uuid.uuid4()}"
+    )
 
 
 def push_metrics():
@@ -255,7 +309,7 @@ def home():
         "service": "order-api",
         "status": "running",
         "hostname": socket.gethostname(),
-        "version": os.getenv("APP_VERSION", "27-events-through-order-api"),
+        "version": os.getenv("APP_VERSION", "28-cart-idempotency-fixed"),
         "rabbitmq_host": RABBITMQ_HOST,
         "rabbitmq_queue": RABBITMQ_QUEUE,
         "pushgateway": PUSHGATEWAY_URL,
@@ -280,7 +334,7 @@ def metrics():
 
 @app.route("/events", methods=["POST"])
 def receive_event():
-    idempotency_key = request.headers.get("Idempotency-Key")
+    request_idempotency_key = request.headers.get("Idempotency-Key")
     data = request.get_json() or {}
 
     event_type = data.get("event_type")
@@ -290,30 +344,28 @@ def receive_event():
             "message": "event_type is required"
         }), 400
 
-    if not idempotency_key:
-        idempotency_key = data.get("event_id")
+    event_id = build_event_id(
+        event_type,
+        data,
+        request_idempotency_key
+    )
 
-    if not idempotency_key:
-        idempotency_key = (
-            f"{event_type}-"
-            f"{data.get('source', 'unknown')}-"
-            f"{datetime.utcnow().isoformat()}"
-        )
-
-    if idempotency_key in idempotency_store:
+    if event_type == "order_created" and event_id in idempotency_store:
         return jsonify({
-            "message": "Duplicate event ignored",
-            "event": idempotency_store[idempotency_key],
+            "message": "Duplicate order event ignored",
+            "event": idempotency_store[event_id],
             "circuit_breaker": circuit_breaker
         }), 200
 
     event = data
-    event["event_id"] = idempotency_key
+    event["event_id"] = event_id
     event["received_by"] = "order-api"
-    event["received_at"] = datetime.utcnow().isoformat()
+    event["received_at"] = now_iso()
 
     events.append(event)
-    idempotency_store[idempotency_key] = event
+
+    if event_type == "order_created":
+        idempotency_store[event_id] = event
 
     EVENTS_RECEIVED_TOTAL.labels(event_type=event_type).inc()
     EVENTS_IN_MEMORY.set(len(events))
@@ -382,7 +434,7 @@ def create_manual_order():
     data = request.get_json() or {}
 
     if not idempotency_key:
-        idempotency_key = f"manual-order-{datetime.utcnow().isoformat()}"
+        idempotency_key = f"manual-order-{uuid.uuid4()}"
 
     order = {
         "event_type": "order_created",
@@ -399,7 +451,7 @@ def create_manual_order():
             "items": data.get("items", []),
             "total_qty": data.get("quantity", 1)
         },
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": now_iso()
     }
 
     orders.append(order)
