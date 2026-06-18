@@ -14,6 +14,22 @@ spec:
             - /bin/sh
             - -c
             - |
-              rabbitmqadmin --host=rabbitmq.rabbitmq.svc.cluster.local --port=15672 --username=user --password=password declare queue name=orders durable=false
-              rabbitmqadmin --host=rabbitmq.rabbitmq.svc.cluster.local --port=15672 --username=user --password=password declare queue name=events durable=false
-              rabbitmqadmin --host=rabbitmq.rabbitmq.svc.cluster.local --port=15672 --username=user --password=password declare binding source=amq.topic destination_type=queue destination=events routing_key=system.minio
+              sleep 20
+
+              rabbitmqadmin \
+                --host=rabbitmq.rabbitmq.svc.cluster.local \
+                --port=15672 \
+                --username="$RABBITMQ_USER" \
+                --password="$RABBITMQ_PASSWORD" \
+                declare queue name=orders durable=false auto_delete=false
+          env:
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: RABBITMQ_DEFAULT_USER
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: RABBITMQ_DEFAULT_PASS
