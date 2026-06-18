@@ -26,7 +26,7 @@ spec:
       serviceAccountName: vault-serviceaccount
 
       containers:
-        - image: docker.io/ais25131/order-api:32
+        - image: docker.io/ais25131/order-api:31
           imagePullPolicy: Always
 
           ports:
@@ -34,7 +34,7 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "32-events-through-order-api"
+              value: "31-events-through-order-api"
 
             - name: PUSHGATEWAY_URL
               value: "pushgateway.monitoring.svc.cluster.local:9091"
