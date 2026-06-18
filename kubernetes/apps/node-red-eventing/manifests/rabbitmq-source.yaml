@@ -14,6 +14,11 @@ spec:
     queueName: events
     parallelism: 1
 
+  delivery:
+    retry: 5
+    backoffPolicy: exponential
+    backoffDelay: PT5S
+
   sink:
     ref:
       apiVersion: serving.knative.dev/v1
