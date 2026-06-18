@@ -26,7 +26,7 @@ spec:
       serviceAccountName: vault-serviceaccount
 
       containers:
-        - image: docker.io/ais25131/order-api:114
+        - image: docker.io/ais25131/order-api:115
           imagePullPolicy: Always
 
           ports:
@@ -34,19 +34,19 @@ spec:
 
           env:
             - name: APP_VERSION
-              value: "114"
+              value: "115"
 
             - name: PUSHGATEWAY_URL
-              value: "114"
+              value: "115"
 
             - name: RABBITMQ_HOST
-              value: "114"
+              value: "115"
 
             - name: RABBITMQ_PORT
-              value: "114"
+              value: "115"
 
             - name: RABBITMQ_QUEUE
-              value: "114"
+              value: "115"
 
           resources:
             requests:
