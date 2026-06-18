@@ -13,6 +13,12 @@ data:
       - /etc/prometheus/rules.yml
 
     scrape_configs:
+
+      - job_name: 'prometheus'
+        static_configs:
+          - targets:
+              - localhost:9090
+
       - job_name: 'pushgateway'
         static_configs:
           - targets:
@@ -24,10 +30,13 @@ data:
           - targets:
               - rabbitmq.rabbitmq.svc.cluster.local:15692
 
+
   rules.yml: |
     groups:
       - name: application-scaling-alerts
+
         rules:
+
           - alert: RabbitMQQueueBacklog
             expr: rabbitmq_queue_messages_ready{queue="events"} > 5
             for: 1m
@@ -37,6 +46,7 @@ data:
               summary: "RabbitMQ queue backlog detected"
               description: "Queue events has more than 5 pending messages for 1 minute."
 
+
           - alert: OrderAPIEventsDetected
             expr: increase(order_api_events_received_total[1m]) > 0
             for: 0m
@@ -45,3 +55,33 @@ data:
             annotations:
               summary: "Order API received events"
               description: "Order API received events during the last minute."
+
+
+          - alert: OrderAPIPublishFailures
+            expr: increase(rabbitmq_publish_failed_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Order API RabbitMQ publish failure"
+              description: "Order API failed to publish at least one event to RabbitMQ during the last 5 minutes."
+
+
+          - alert: OrderAPIPublishRetries
+            expr: increase(rabbitmq_publish_retry_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Order API RabbitMQ publish retries"
+              description: "Order API retried publishing events to RabbitMQ during the last 5 minutes."
+
+
+          - alert: RabbitMQQueueGrowing
+            expr: increase(rabbitmq_queue_messages_ready{queue="events"}[2m]) > 0
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "RabbitMQ queue is growing"
+              description: "RabbitMQ events queue is increasing, which may indicate that Node-RED is not consuming messages fast enough."
