@@ -35,7 +35,7 @@ data:
             "type": "function",
             "z": "b016700d924c37ba",
             "name": "validate_wp_event",
-            "func": "const ev = msg.payload || {};\n\nif (!ev.event_type) {\n    msg.statusCode = 400;\n    msg.payload = { error: \"Missing event_type\" };\n    return [msg, null, null];\n}\n\nmsg.businessEvent = ev;\n\nreturn [msg, msg, msg];",
+            "func": "let ev = msg.payload || {};\n\nif (typeof ev === \"string\") {\n    try {\n        ev = JSON.parse(ev);\n    } catch (error) {\n        msg.statusCode = 400;\n        msg.payload = { error: \"Cannot parse JSON payload\" };\n        return [msg, null, null];\n    }\n}\n\nif (ev.data) {\n    ev = ev.data;\n}\n\nif (typeof ev === \"string\") {\n    try {\n        ev = JSON.parse(ev);\n    } catch (error) {\n        msg.statusCode = 400;\n        msg.payload = { error: \"Cannot parse CloudEvent data\" };\n        return [msg, null, null];\n    }\n}\n\nif (!ev.event_type) {\n    msg.statusCode = 400;\n    msg.payload = {\n        error: \"Missing event_type\",\n        receivedPayload: msg.payload\n    };\n    return [msg, null, null];\n}\n\nmsg.businessEvent = ev;\n\nmsg.statusCode = 200;\nmsg.payload = {\n    message: \"Event received\",\n    event_type: ev.event_type,\n    event_id: ev.event_id || null\n};\n\nreturn [msg, msg, msg];",
             "outputs": 3,
             "timeout": 0,
             "noerr": 0,
@@ -76,7 +76,7 @@ data:
                 ]
             ]
         },
-        {
+         {
             "id": "d329961bc35eeaf9",
             "type": "aws-config",
             "endpoint": "${MINIO_ENDPOINT}",
@@ -94,7 +94,7 @@ data:
             "region": "us-east-1",
             "name": "Minio events",
             "x": 1080,
-            "y": 440,
+            "y": 420,
             "wires": []
         },
         {
@@ -227,7 +227,7 @@ data:
             "sessionExpiry": ""
         },
         {
-            "id": "7844988aab78f2f8",
+            "id": "521556588d3728a6",
             "type": "global-config",
             "env": [],
             "modules": {
