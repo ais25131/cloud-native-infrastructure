@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "docker.io/ais25131/order-api"
         IMAGE_TAG = "${BUILD_NUMBER}"
+        KNATIVE_MANIFEST = "kubernetes/apps/knative/manifests/order-api-knative.yaml"
     }
 
     triggers {
@@ -45,11 +46,11 @@ pipeline {
             }
         }
 
-        stage('Update manifest image') {
+        stage('Update Knative manifest image') {
             steps {
                 sh '''
-                    sed -i "s|image: docker.io/ais25131/order-api:.*|image: $DOCKER_IMAGE:$IMAGE_TAG|" kubernetes/apps/order-api/manifests/deployment.yaml
-                    sed -i "s|value: \\".*\\"|value: \\"$IMAGE_TAG\\"|" kubernetes/apps/order-api/manifests/deployment.yaml
+                    sed -i "s|image: docker.io/ais25131/order-api:.*|image: $DOCKER_IMAGE:$IMAGE_TAG|" $KNATIVE_MANIFEST
+                    sed -i "s|value: \\".*\\"|value: \\"$IMAGE_TAG\\"|" $KNATIVE_MANIFEST
                 '''
             }
         }
@@ -65,12 +66,12 @@ pipeline {
                         git config user.name "jenkins"
                         git config user.email "jenkins@local"
 
-                        git add kubernetes/apps/order-api/manifests/deployment.yaml
+                        git add $KNATIVE_MANIFEST
 
                         if git diff --cached --quiet; then
                             echo "No changes to commit."
                         else
-                            git commit -m "Update order-api image to $IMAGE_TAG"
+                            git commit -m "Update order-api Knative image to $IMAGE_TAG"
                             git push https://$GIT_USER:$GIT_TOKEN@github.com/ais25131/cloud-native-infrastructure.git HEAD:main
                         fi
                     '''

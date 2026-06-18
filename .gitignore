@@ -1,21 +1,81 @@
-# OpenTofu
+# ==========================
+# OpenTofu / Terraform
+# ==========================
 **/.terraform/
 **/*.tfstate
 **/*.tfstate.*
 **/.terraform.lock.hcl
 
+# ==========================
 # Vagrant
+# ==========================
 **/.vagrant/
 
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+
+# ==========================
 # Logs
+# ==========================
 *.log
 
-# Environment
+# ==========================
+# Environment files
+# ==========================
 .env
+.env.*
+!.env.example
 
+# ==========================
 # Ansible
+# ==========================
 *.retry
 
-# OS
+# Optional if using Ansible Vault
+*.vault
+vault_pass.txt
+
+# ==========================
+# Jenkins
+# ==========================
+workspace/
+.jenkins/
+
+# ==========================
+# Kubernetes secrets
+# ==========================
+**/secret.yaml
+**/*secret*.yaml
+
+# Keep placeholders/examples
+!**/secret-example.yaml
+!**/secret-template.yaml
+
+# ==========================
+# Archives
+# ==========================
+*.tar
+*.tar.gz
+*.tgz
+
+# ==========================
+# IDEs
+# ==========================
+.vscode/
+.idea/
+
+# ==========================
+# OS files
+# ==========================
 .DS_Store
 Thumbs.db
