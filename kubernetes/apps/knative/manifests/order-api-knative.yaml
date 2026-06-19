@@ -37,16 +37,16 @@ spec:
               value: "116"
 
             - name: PUSHGATEWAY_URL
-              value: "116"
+              value: "http://pushgateway.monitoring.svc.cluster.local:9091"
 
             - name: RABBITMQ_HOST
-              value: "116"
+              value: "rabbitmq.rabbitmq.svc.cluster.local"
 
             - name: RABBITMQ_PORT
-              value: "116"
+              value: "5672"
 
             - name: RABBITMQ_QUEUE
-              value: "116"
+              value: "events"
 
           resources:
             requests:

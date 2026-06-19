@@ -50,7 +50,8 @@ pipeline {
             steps {
                 sh '''
                     sed -i "s|image: docker.io/ais25131/order-api:.*|image: $DOCKER_IMAGE:$IMAGE_TAG|" $KNATIVE_MANIFEST
-                    sed -i "s|value: \\".*\\"|value: \\"$IMAGE_TAG\\"|" $KNATIVE_MANIFEST
+
+                    sed -i '/name: APP_VERSION/{n;s|value: ".*"|value: "'$IMAGE_TAG'"|}' $KNATIVE_MANIFEST
                 '''
             }
         }
