@@ -277,15 +277,6 @@ Node-RED writes processed event data to MinIO.
 
 MinIO is also configured with RabbitMQ notification support through Kubernetes jobs and manifests.
 
----
-
-## Keycloak
-
-Keycloak integration was implemented during development and remains available in the repository for future Single Sign-On extensions.
-
-The final event workflow uses a custom WordPress plugin for event forwarding.
-
-Keycloak is kept as part of the infrastructure because it can be used later for authentication and identity management.
 
 ---
 
@@ -357,7 +348,7 @@ The following hostnames must resolve to the Kubernetes ingress IP through the lo
 
 ## Manual Configuration Required
 
-This repository does not include real credentials.
+No production credentials are included in this repository.
 
 After cloning the repository, the following values must be configured manually.
 
@@ -481,8 +472,7 @@ Possible improvements include:
 * Add direct Order API scraping in Prometheus
 * Add more Grafana dashboards
 * Add automated integration tests
-* Add GitHub webhooks instead of SCM polling
-* Extend Keycloak SSO integration
+* Add GitHub webhooks instead of SCM polling 
 * Add Helm charts for reusable deployment
 * Add documentation screenshots under `docs/images`
 
