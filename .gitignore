@@ -19,8 +19,6 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
-
-# Virtual environments
 venv/
 .venv/
 
@@ -37,11 +35,25 @@ venv/
 !.env.example
 
 # ==========================
+# SSH / Certificates
+# ==========================
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+ansible_key
+ansible_key.pub
+
+# ==========================
+# Kubernetes
+# ==========================
+kubeconfig
+*.kubeconfig
+
+# ==========================
 # Ansible
 # ==========================
 *.retry
-
-# Optional if using Ansible Vault
 *.vault
 vault_pass.txt
 
@@ -55,11 +67,11 @@ workspace/
 # Kubernetes secrets
 # ==========================
 **/secret.yaml
-**/*secret*.yaml
+**/*-secret.yaml
 
 # Keep placeholders/examples
-!**/secret-example.yaml
-!**/secret-template.yaml
+!**/*-secret-example.yaml
+!**/*-secret-template.yaml
 
 # ==========================
 # Archives
