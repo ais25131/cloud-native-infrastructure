@@ -64,16 +64,6 @@ workspace/
 .jenkins/
 
 # ==========================
-# Kubernetes secrets
-# ==========================
-**/secret.yaml
-**/*-secret.yaml
-
-# Keep placeholders/examples
-!**/*-secret-example.yaml
-!**/*-secret-template.yaml
-
-# ==========================
 # Archives
 # ==========================
 *.tar
